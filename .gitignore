@@ -36,3 +36,6 @@ replit.md
 
 # Temp files
 nouveau *.txt
+
+# ngrok
+ngrok.exe
