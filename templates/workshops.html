@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{{ translations.workshop_management }} - {{ translations.stock_management_system }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="fas fa-industry me-2"></i>
+                    {{ translations.workshop_management }}
+                </h1>
+                <a href="{{ url_for('add_workshop') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>
+                    {{ translations.add_workshop }}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="search" placeholder="{{ translations.search }}..." value="{{ search }}">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    {% if workshops %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>{{ translations.workshop_name }}</th>
+                                    <th>{{ translations.workshop_location }}</th>
+                                    <th>{{ translations.workshop_city }}</th>
+                                    <th>{{ translations.workshop_description }}</th>
+                                    <th>{{ translations.status }}</th>
+                                    <th>{{ translations.actions }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ws in workshops %}
+                                <tr>
+                                    <td><strong>{{ ws[1] }}</strong></td>
+                                    <td>{{ ws[2] or '-' }}</td>
+                                    <td>{{ ws[3] or '-' }}</td>
+                                    <td>{{ ws[4] or '-' }}</td>
+                                    <td>
+                                        {% if ws[5] %}
+                                            <span class="badge bg-success">{{ translations.active }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ translations.inactive }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('edit_workshop', workshop_id=ws[0]) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ url_for('delete_workshop', workshop_id=ws[0]) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('{{ translations.confirm_delete_workshop }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-industry fa-3x text-muted mb-3"></i>
+                        <h5>{{ translations.no_workshops }}</h5>
+                        <p class="text-muted">{{ translations.no_workshops_desc }}</p>
+                        <a href="{{ url_for('add_workshop') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>
+                            {{ translations.add_workshop }}
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -78,6 +78,10 @@
                                 <i class="fas fa-users me-1"></i>
                                 {{ translations.user_management }}
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('workshops') }}">
+                                <i class="fas fa-industry me-1"></i>
+                                {{ translations.workshop_management }}
+                            </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('email_management') }}">
                                 <i class="fas fa-envelope me-1"></i>
                                 {{ translations.email_management }}
@@ -112,6 +116,12 @@
                     {% endif %}
                 </ul>
 
+                {% if session.get('workshop_id') or session.get('role') in ('admin', 'principal_admin') %}
+                <span class="badge bg-light text-dark me-2 py-2 px-3">
+                    <i class="fas fa-industry me-1"></i>
+                    <span id="workshopName">{% if session.get('workshop_id') %}{{ session.workshop_name or translations.workshop }}{% else %}{{ translations.all_workshops or 'Tous les ateliers' }}{% endif %}</span>
+                </span>
+                {% endif %}
                 <form class="d-flex mx-2 position-relative" style="min-width:250px;">
                     <input class="form-control form-control-sm" type="search" id="liveSearch" placeholder="🔍 Rechercher produit...">
                     <div id="liveSearchResults" class="dropdown-menu w-100" style="display:none;max-height:400px;overflow-y:auto;"></div>

@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash, generate_password_hash
-from db import get_db
+from db import get_db, query_one
 from utils import get_translation
 from notifications import send_password_reset_email
 from translations import TRANSLATIONS
@@ -33,13 +33,17 @@ def register_auth_routes(app):
             password = request.form['password']
             with get_db() as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT id, password_hash, role, active FROM users WHERE username = ?', (username,))
+                cursor.execute('SELECT id, password_hash, role, active, workshop_id FROM users WHERE username = ?', (username,))
                 user = cursor.fetchone()
                 if user and user['active'] == 1 and check_password_hash(user['password_hash'], password):
                     session['user_id'] = user['id']
                     session['username'] = username
                     session['role'] = user['role']
+                    session['workshop_id'] = user['workshop_id'] if 'workshop_id' in user.keys() and user['workshop_id'] else None
                     session['lang'] = session.get('lang', 'fr')
+                    if session.get('workshop_id'):
+                        ws = query_one('SELECT name FROM workshops WHERE id = ?', (session['workshop_id'],))
+                        session['workshop_name'] = ws['name'] if ws else None
                     cursor.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user['id'],))
                     flash(get_translation('login_successful'), 'success')
                     return redirect(url_for('dashboard'))

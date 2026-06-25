@@ -94,3 +94,16 @@ def log_audit(action: str, entity_type: str, entity_id: int, details: str, user_
         ''', (action, entity_type, entity_id, details, user_id, username))
     except Exception as e:
         logger.error(f"Failed to log audit: {e}")
+
+
+def workshop_filter(table_alias: str = None) -> tuple:
+    """Returns (where_clause, params) for workshop scoping.
+    Admins see ALL workshops. Regular users see only their assigned workshop."""
+    role = session.get('role', 'user')
+    if role in ('admin', 'principal_admin'):
+        return ('', [])
+    workshop_id = session.get('workshop_id')
+    prefix = f'{table_alias}.' if table_alias else ''
+    if workshop_id:
+        return (f' AND {prefix}workshop_id = ?', [workshop_id])
+    return (f' AND {prefix}workshop_id IS NULL', [])

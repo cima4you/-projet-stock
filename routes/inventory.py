@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from db import get_db, query, query_one, execute
-from utils import login_required, admin_required, get_translation, log_audit
+from utils import login_required, admin_required, get_translation, log_audit, workshop_filter
 from translations import TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -13,13 +13,15 @@ def register_inventory_routes(app):
     @app.route('/inventory')
     @admin_required
     def inventory():
+        ws_clause, ws_params = workshop_filter('p')
         counts = query('''
             SELECT ic.*, p.code, p.name
             FROM inventory_counts ic
             JOIN products p ON ic.product_id = p.id
+            WHERE 1=1''' + ws_clause + '''
             ORDER BY ic.counted_at DESC LIMIT 100
-        ''') or []
-        products = query('SELECT id, code, name, quantity FROM products WHERE deleted_at IS NULL ORDER BY name')
+        ''', tuple(ws_params)) or []
+        products = query('SELECT id, code, name, quantity FROM products WHERE deleted_at IS NULL' + ws_clause.replace('p.', '') + ' ORDER BY name', tuple(ws_params))
         return render_template('inventory.html', counts=counts, products=products,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))

@@ -5,7 +5,7 @@ from io import BytesIO
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, session, flash, Response
 from db import get_db, query, query_one
-from utils import login_required, get_translation, excel_serial_to_datetime, log_audit
+from utils import login_required, get_translation, excel_serial_to_datetime, log_audit, workshop_filter
 from notifications import send_product_addition_notification, send_product_exit_notification
 from translations import TRANSLATIONS
 
@@ -33,6 +33,9 @@ def register_movement_routes(app):
 
             where = ' WHERE 1=1'
             params = []
+            ws_clause, ws_params = workshop_filter('sm')
+            where += ws_clause
+            params.extend(ws_params)
             if type_filter:
                 where += ' AND sm.movement_type = ?'
                 params.append(type_filter)
@@ -168,15 +171,18 @@ def register_movement_routes(app):
                         flash(get_translation('insufficient_stock'), 'error')
                         return redirect(url_for('add_movement'))
 
+                    ws_id = session.get('workshop_id')
                     cursor.execute('''
                         INSERT INTO stock_movements (
                             product_id, movement_type, quantity, notes, user_id,
                             supplier_name, bc_number, bl_number, n_facture, type_achat,
-                            chantier_exp_recep, nom_donneur_ordre, nom_magasinier, nom_chauffeur, matricule
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            chantier_exp_recep, nom_donneur_ordre, nom_magasinier, nom_chauffeur, matricule,
+                            workshop_id
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (product_id, movement_type, quantity, notes, session['user_id'],
                           supplier_name, bc_number, bl_number, n_facture, type_achat,
-                          chantier_exp_recep, nom_donneur_ordre, nom_magasinier, nom_chauffeur, matricule))
+                          chantier_exp_recep, nom_donneur_ordre, nom_magasinier, nom_chauffeur, matricule,
+                          ws_id))
 
                     new_qty = current_quantity + quantity if movement_type == 'entry' else current_quantity - quantity
                     cursor.execute('UPDATE products SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -193,7 +199,8 @@ def register_movement_routes(app):
                              'n_facture': n_facture, 'chantier_exp_recep': chantier_exp_recep,
                              'nom_donneur_ordre': nom_donneur_ordre, 'nom_chauffeur': nom_chauffeur,
                              'matricule': matricule},
-                            'entry', session['username'], session.get('lang', 'fr'))
+                            'entry', session['username'], session.get('lang', 'fr'),
+                            workshop_id=session.get('workshop_id'))
                     elif movement_type == 'exit':
                         send_product_exit_notification(
                             {'id': product_id, 'code': product_row['code'], 'name': product_row['name'],
@@ -202,7 +209,8 @@ def register_movement_routes(app):
                              'n_facture': n_facture, 'chantier_exp_recep': chantier_exp_recep,
                              'nom_donneur_ordre': nom_donneur_ordre, 'nom_chauffeur': nom_chauffeur,
                              'matricule': matricule},
-                            'exit', session['username'], session.get('lang', 'fr'))
+                            'exit', session['username'], session.get('lang', 'fr'),
+                            workshop_id=session.get('workshop_id'))
 
                 log_audit('create', 'movement', cursor.lastrowid,
                           f"Mouvement {movement_type} de {quantity} pour produit #{product_id}")
@@ -214,7 +222,8 @@ def register_movement_routes(app):
 
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT id, code, name, quantity FROM products WHERE deleted_at IS NULL ORDER BY name')
+            ws_clause, ws_params = workshop_filter()
+            cursor.execute('SELECT id, code, name, quantity FROM products WHERE deleted_at IS NULL' + ws_clause + ' ORDER BY name', ws_params)
             products_list = cursor.fetchall()
         return render_template('add_movement.html', products=products_list,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
@@ -240,6 +249,9 @@ def register_movement_routes(app):
                 WHERE 1=1
             '''
             params = []
+            ws_clause, ws_params = workshop_filter('sm')
+            q += ws_clause
+            params.extend(ws_params)
             if start_date:
                 q += ' AND DATE(sm.created_at) >= ?'
                 params.append(start_date)
@@ -291,6 +303,9 @@ def register_movement_routes(app):
                     WHERE 1=1
                 '''
                 params = []
+                ws_clause, ws_params = workshop_filter('sm')
+                q += ws_clause
+                params.extend(ws_params)
                 if start_date:
                     q += ' AND DATE(sm.created_at) >= ?'
                     params.append(start_date)

@@ -6,7 +6,7 @@ from io import BytesIO
 from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, session, flash, Response
 from db import get_db, query, query_one, execute
-from utils import login_required, admin_required, allowed_excel_file, get_translation, log_audit
+from utils import login_required, admin_required, allowed_excel_file, get_translation, log_audit, workshop_filter
 from notifications import send_product_deletion_notification, send_product_addition_notification
 from translations import TRANSLATIONS
 from config import UPLOAD_FOLDER
@@ -36,6 +36,9 @@ def register_product_routes(app):
 
             where = ' WHERE deleted_at IS NULL'
             params = []
+            ws_clause, ws_params = workshop_filter()
+            where += ws_clause
+            params.extend(ws_params)
             if category_filter:
                 where += ' AND category LIKE ?'
                 params.append(f'%{category_filter}%')
@@ -69,7 +72,8 @@ def register_product_routes(app):
             cursor.execute(q, params + [per_page, offset])
             products_list = cursor.fetchall()
 
-            cursor.execute('SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" AND deleted_at IS NULL')
+            ws_only, ws_only_params = workshop_filter()
+            cursor.execute('SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" AND deleted_at IS NULL' + ws_only, ws_only_params)
             categories = [row[0] for row in cursor.fetchall()]
 
         all_cats = query('SELECT name FROM categories ORDER BY name')
@@ -114,7 +118,9 @@ def register_product_routes(app):
 
                 with get_db() as conn:
                     cursor = conn.cursor()
-                    cursor.execute('SELECT id FROM products WHERE code = ?', (code,))
+                    ws_id = session.get('workshop_id')
+                    cursor.execute('SELECT id FROM products WHERE code = ? AND (workshop_id = ? OR (workshop_id IS NULL AND ? IS NULL))',
+                                  (code, ws_id, ws_id))
                     if cursor.fetchone():
                         flash(get_translation('product_code_already_exists'), 'error')
                         return render_template('add_product.html',
@@ -123,11 +129,11 @@ def register_product_routes(app):
                     cursor.execute('''
                         INSERT INTO products (code, name, category, unit, quantity, brand, condition_status,
                                             chanter, storage_zone, notes, supplier_name, bc_number, bl_number,
-                                            n_facture, type_achat, expiration_date, min_quantity)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            n_facture, type_achat, expiration_date, min_quantity, workshop_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (code, name, category, unit, quantity, brand, condition_status,
                           chanter, storage_zone, notes, supplier_name, bc_number, bl_number,
-                          n_facture, type_achat, expiration_date, min_quantity))
+                          n_facture, type_achat, expiration_date, min_quantity, ws_id))
                     product_id = cursor.lastrowid
                     log_audit('create', 'product', product_id, f"Création du produit {code} - {name}")
 
@@ -142,7 +148,8 @@ def register_product_routes(app):
                             {'id': product_id, 'code': code, 'name': name, 'quantity': quantity, 'type_achat': type_achat,
                              'supplier_name': supplier_name, 'bc_number': bc_number, 'bl_number': bl_number,
                              'n_facture': n_facture},
-                            'entry', session['username'], session.get('lang', 'fr'))
+                            'entry', session['username'], session.get('lang', 'fr'),
+                            workshop_id=session.get('workshop_id'))
 
                 flash(get_translation('product_added_successfully'), 'success')
                 return redirect(url_for('products'))
@@ -182,7 +189,9 @@ def register_product_routes(app):
                     expiration_date = request.form.get('expiration_date', None) or None
                     min_quantity = int(request.form.get('min_quantity', 0))
 
-                    cursor.execute('SELECT id FROM products WHERE code = ? AND id != ?', (code, product_id))
+                    ws_id = session.get('workshop_id')
+                    cursor.execute('SELECT id FROM products WHERE code = ? AND id != ? AND (workshop_id = ? OR (workshop_id IS NULL AND ? IS NULL))',
+                                  (code, product_id, ws_id, ws_id))
                     if cursor.fetchone():
                         flash(get_translation('product_code_already_exists'), 'error')
                         return redirect(url_for('edit_product', product_id=product_id))
@@ -234,7 +243,8 @@ def register_product_routes(app):
                 cursor.execute('UPDATE products SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', (product_id,))
 
             send_product_deletion_notification(product_info, deleted_by_user=session['username'],
-                                                lang=session.get('lang', 'fr'))
+                                                lang=session.get('lang', 'fr'),
+                                                workshop_id=session.get('workshop_id'))
             flash("Produit archivé avec succès", 'success')
         except Exception as e:
             logger.error(f"Error archiving product: {e}")
@@ -261,11 +271,12 @@ def register_product_routes(app):
 
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM products WHERE deleted_at IS NOT NULL')
+            ws_clause, ws_params = workshop_filter()
+            cursor.execute('SELECT COUNT(*) FROM products WHERE deleted_at IS NOT NULL' + ws_clause, ws_params)
             total = cursor.fetchone()[0]
             total_pages = max(1, (total + per_page - 1) // per_page)
-            cursor.execute('SELECT * FROM products WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT ? OFFSET ?',
-                          (per_page, offset))
+            cursor.execute('SELECT * FROM products WHERE deleted_at IS NOT NULL' + ws_clause + ' ORDER BY deleted_at DESC LIMIT ? OFFSET ?',
+                          ws_params + [per_page, offset])
             prods = cursor.fetchall()
 
         return render_template('archived_products.html', products=prods,
@@ -289,7 +300,7 @@ def register_product_routes(app):
                     filename = secure_filename(file.filename)
                     filepath = os.path.join(UPLOAD_FOLDER, filename)
                     file.save(filepath)
-                    success, message, imported_count, errors = _import_from_excel(filepath, session['user_id'])
+                    success, message, imported_count, errors = _import_from_excel(filepath, session['user_id'], session.get('workshop_id'))
                     os.remove(filepath)
                     if success:
                         flash(f"{message}. {get_translation('products_imported_successfully')}", 'success')
@@ -324,6 +335,9 @@ def register_product_routes(app):
             search_query = request.args.get('search', '')
             q = 'SELECT * FROM products WHERE deleted_at IS NULL'
             params = []
+            ws_clause, ws_params = workshop_filter()
+            q += ws_clause
+            params.extend(ws_params)
             if category_filter:
                 q += ' AND category LIKE ?'
                 params.append(f'%{category_filter}%')
@@ -349,6 +363,9 @@ def register_product_routes(app):
             search_query = request.args.get('search', '')
             q = 'SELECT * FROM products WHERE deleted_at IS NULL'
             params = []
+            ws_clause, ws_params = workshop_filter()
+            q += ws_clause
+            params.extend(ws_params)
             if category_filter:
                 q += ' AND category LIKE ?'
                 params.append(f'%{category_filter}%')
@@ -404,7 +421,7 @@ def register_product_routes(app):
             flash(f"Erreur lors de l'export: {str(e)}", 'error')
             return redirect(url_for('product_reports'))
 
-def _import_from_excel(file_path: str, user_id: int):
+def _import_from_excel(file_path: str, user_id: int, workshop_id=None):
     df = pd.read_excel(file_path)
     column_mapping = {
         'كود المنتج': 'code', 'Product Code': 'code', 'code': 'code', 'Code Produit': 'code',
@@ -454,18 +471,19 @@ def _import_from_excel(file_path: str, user_id: int):
                 else:
                     exp_date = None
 
+                ws_id = session.get('workshop_id') if hasattr(session, 'get') else None
                 cursor.execute('''
                     INSERT INTO products (code, name, category, unit, quantity, brand, condition_status,
                                         chanter, storage_zone, notes, supplier_name, bc_number, bl_number,
-                                        n_facture, type_achat, expiration_date, min_quantity)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        n_facture, type_achat, expiration_date, min_quantity, workshop_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     row['code'], row['name'], row.get('category', ''), row.get('unit', ''),
                     int(row.get('quantity', 0)) if pd.notna(row.get('quantity', 0)) else 0,
                     row.get('brand', ''), row.get('condition_status', ''), row.get('chanter', ''),
                     row.get('storage_zone', ''), row.get('notes', ''), row.get('supplier_name', ''),
                     row.get('bc_number', ''), row.get('bl_number', ''), row.get('n_facture', ''),
-                    row.get('type_achat', ''), exp_date, 0
+                    row.get('type_achat', ''), exp_date, 0, ws_id
                 ))
                 product_id = cursor.lastrowid
 
@@ -483,7 +501,8 @@ def _import_from_excel(file_path: str, user_id: int):
                          'quantity': qty, 'type_achat': row.get('type_achat', ''),
                          'supplier_name': row.get('supplier_name', ''), 'bc_number': row.get('bc_number', ''),
                          'bl_number': row.get('bl_number', ''), 'n_facture': row.get('n_facture', '')},
-                        'entry', 'Système (Import Excel)', 'fr')
+                        'entry', 'Système (Import Excel)', 'fr',
+                        workshop_id=workshop_id)
 
                 imported_count += 1
             except Exception as e:

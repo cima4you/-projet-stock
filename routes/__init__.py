@@ -11,6 +11,7 @@ from .suppliers import register_supplier_routes
 from .notifications_api import register_notifications_api_routes
 from .inventory import register_inventory_routes
 from .search import register_search_routes
+from .workshops import register_workshop_routes
 
 
 def register_blueprints(app):
@@ -27,3 +28,4 @@ def register_blueprints(app):
     register_notifications_api_routes(app)
     register_inventory_routes(app)
     register_search_routes(app)
+    register_workshop_routes(app)

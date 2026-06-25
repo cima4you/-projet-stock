@@ -89,6 +89,7 @@
                                 <tr>
                                     <th>{{ translations.recipient_name }}</th>
                                     <th>{{ translations.email }}</th>
+                                    <th>{{ translations.workshop }}</th>
                                     <th>{{ translations.notification_preferences }}</th>
                                     <th>{{ translations.status }}</th>
                                     <th>{{ translations.actions }}</th>
@@ -99,6 +100,13 @@
                                 <tr>
                                     <td>{{ recipient[1] }}</td>
                                     <td>{{ recipient[2] }}</td>
+                                    <td>
+                                        {% if recipient[11] %}
+                                            <span class="badge bg-info">{{ recipient[12] }}</span>
+                                        {% else %}
+                                            <span class="text-muted">{{ translations.all_workshops }}</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
                                             {% if recipient[4] %}
@@ -173,6 +181,16 @@
                     <div class="mb-3">
                         <label for="email" class="form-label">{{ translations.recipient_email }} *</label>
                         <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="workshop_id" class="form-label">{{ translations.select_workshop }}</label>
+                        <select class="form-select" id="workshop_id" name="workshop_id">
+                            <option value="">{{ translations.all_workshops }}</option>
+                            {% for ws in workshops %}
+                            <option value="{{ ws[0] }}">{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">{{ translations.recipient_workshop_help }}</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">{{ translations.notification_preferences }}</label>
@@ -254,6 +272,16 @@
                     <div class="mb-3">
                         <label for="email{{ recipient[0] }}" class="form-label">{{ translations.recipient_email }} *</label>
                         <input type="email" class="form-control" id="email{{ recipient[0] }}" name="email" value="{{ recipient[2] }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="workshop_id{{ recipient[0] }}" class="form-label">{{ translations.select_workshop }}</label>
+                        <select class="form-select" id="workshop_id{{ recipient[0] }}" name="workshop_id">
+                            <option value="">{{ translations.all_workshops }}</option>
+                            {% for ws in workshops %}
+                            <option value="{{ ws[0] }}" {% if recipient[11] and recipient[11] == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">{{ translations.recipient_workshop_help }}</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">{{ translations.notification_preferences }}</label>

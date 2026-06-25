@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ translations.edit_workshop }} - {{ translations.stock_management_system }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="fas fa-edit me-2"></i>
+                    {{ translations.edit_workshop }}
+                </h1>
+                <a href="{{ url_for('workshops') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {{ translations.back }}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">{{ translations.workshop_name }} *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-industry"></i></span>
+                                <input type="text" class="form-control" id="name" name="name" value="{{ workshop[1] }}" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="location" class="form-label">{{ translations.workshop_location }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                                <input type="text" class="form-control" id="location" name="location" value="{{ workshop[2] }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="city" class="form-label">{{ translations.workshop_city }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-city"></i></span>
+                                <input type="text" class="form-control" id="city" name="city" value="{{ workshop[3] }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">{{ translations.workshop_description }}</label>
+                            <textarea class="form-control" id="description" name="description" rows="3">{{ workshop[4] }}</textarea>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="active" name="active" {% if workshop[5] %}checked{% endif %}>
+                            <label class="form-check-label" for="active">{{ translations.active }}</label>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('workshops') }}" class="btn btn-secondary me-md-2">
+                                {{ translations.cancel }}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                {{ translations.save }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -72,6 +72,17 @@
                             {% endif %}
                         </div>
 
+                        <div class="mb-3">
+                            <label for="workshop_id" class="form-label">{{ translations.select_workshop }}</label>
+                            <select class="form-select" id="workshop_id" name="workshop_id">
+                                <option value="">{{ translations.all_workshops }}</option>
+                                {% for ws in workshops %}
+                                <option value="{{ ws[0] }}" {% if user[10] and user[10] == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">{{ translations.recipient_workshop_help }}</div>
+                        </div>
+
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" id="active" name="active" {% if user[5] %}checked{% endif %} {% if user[4] == 'principal_admin' %}disabled{% endif %}>
                             <label class="form-check-label" for="active">

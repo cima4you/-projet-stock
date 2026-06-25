@@ -1,7 +1,7 @@
 import logging
 from flask import render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash
-from db import get_db
+from db import get_db, query
 from utils import admin_required, principal_admin_required, get_translation, log_audit
 from translations import TRANSLATIONS
 
@@ -15,7 +15,12 @@ def register_user_routes(app):
     def users():
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT id, username, email, role, active, created_at, last_login FROM users ORDER BY created_at DESC')
+            cursor.execute('''
+                SELECT u.id, u.username, u.email, u.role, u.active, u.created_at, u.last_login, u.workshop_id, COALESCE(w.name, '') as workshop_name
+                FROM users u
+                LEFT JOIN workshops w ON u.workshop_id = w.id
+                ORDER BY u.created_at DESC
+            ''')
             users_list = cursor.fetchall()
         return render_template('users.html', users=users_list,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
@@ -30,9 +35,14 @@ def register_user_routes(app):
                 email = request.form['email'].strip()
                 password = request.form['password']
                 role = request.form['role']
+                workshop_id = request.form.get('workshop_id', '') or None
+                if workshop_id:
+                    workshop_id = int(workshop_id)
                 if role == 'principal_admin':
                     flash(get_translation('cannot_create_principal_admin'), 'error')
+                    workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
                     return render_template('add_user.html',
+                                         workshops=workshops,
                                          translations=TRANSLATIONS[session.get('lang', 'fr')],
                                          lang=session.get('lang', 'fr'))
                 with get_db() as conn:
@@ -40,19 +50,23 @@ def register_user_routes(app):
                     cursor.execute('SELECT id FROM users WHERE username = ? OR email = ?', (username, email))
                     if cursor.fetchone():
                         flash(get_translation('username_or_email_already_exists'), 'error')
+                        workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
                         return render_template('add_user.html',
+                                             workshops=workshops,
                                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                                              lang=session.get('lang', 'fr'))
                     password_hash = generate_password_hash(password)
-                    cursor.execute('INSERT INTO users (username, password_hash, email, role) VALUES (?, ?, ?, ?)',
-                                  (username, password_hash, email, role))
+                    cursor.execute('INSERT INTO users (username, password_hash, email, role, workshop_id) VALUES (?, ?, ?, ?, ?)',
+                                  (username, password_hash, email, role, workshop_id))
                     log_audit('create', 'user', cursor.lastrowid, f"Création utilisateur {username} ({role})")
                 flash(get_translation('user_added_successfully'), 'success')
                 return redirect(url_for('users'))
             except Exception as e:
                 logger.error(f"Error adding user: {e}")
                 flash(f"Erreur lors de l'ajout: {str(e)}", 'error')
+        workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
         return render_template('add_user.html',
+                             workshops=workshops,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
@@ -68,6 +82,9 @@ def register_user_routes(app):
                     role = request.form['role']
                     active = 1 if 'active' in request.form else 0
                     new_password = request.form.get('new_password', '').strip()
+                    workshop_id = request.form.get('workshop_id', '') or None
+                    if workshop_id:
+                        workshop_id = int(workshop_id)
 
                     cursor.execute('SELECT role FROM users WHERE id = ?', (session['user_id'],))
                     result = cursor.fetchone()
@@ -106,11 +123,11 @@ def register_user_routes(app):
 
                     if new_password:
                         pw_hash = generate_password_hash(new_password)
-                        cursor.execute('''UPDATE users SET username=?, email=?, role=?, active=?, password_hash=?
-                                        WHERE id=?''', (username, email, role, active, pw_hash, user_id))
+                        cursor.execute('''UPDATE users SET username=?, email=?, role=?, active=?, workshop_id=?, password_hash=?
+                                        WHERE id=?''', (username, email, role, active, workshop_id, pw_hash, user_id))
                     else:
-                        cursor.execute('''UPDATE users SET username=?, email=?, role=?, active=?
-                                        WHERE id=?''', (username, email, role, active, user_id))
+                        cursor.execute('''UPDATE users SET username=?, email=?, role=?, active=?, workshop_id=?
+                                        WHERE id=?''', (username, email, role, active, workshop_id, user_id))
 
                     log_audit('update', 'user', user_id, f"Mise à jour utilisateur {username} (role={role}, active={active})")
                     flash(get_translation('user_updated_successfully'), 'success')
@@ -124,7 +141,8 @@ def register_user_routes(app):
             if not user:
                 flash(get_translation('user_not_found'), 'error')
                 return redirect(url_for('users'))
-        return render_template('edit_user.html', user=user,
+        workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
+        return render_template('edit_user.html', user=user, workshops=workshops,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 

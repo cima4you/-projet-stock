@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 from flask import render_template, session
 from db import get_db
-from utils import login_required
+from utils import login_required, workshop_filter
 from notifications import check_expiring_products
 from translations import TRANSLATIONS
 
@@ -14,34 +14,38 @@ def register_dashboard_routes(app):
     def dashboard():
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) as cnt FROM products WHERE deleted_at IS NULL')
+            ws_clause, ws_params = workshop_filter()
+            cursor.execute('SELECT COUNT(*) as cnt FROM products WHERE deleted_at IS NULL' + ws_clause, ws_params)
             total_products = cursor.fetchone()['cnt']
-            cursor.execute('SELECT COUNT(*) as cnt FROM products WHERE deleted_at IS NULL AND quantity <= 10')
+            cursor.execute('SELECT COUNT(*) as cnt FROM products WHERE deleted_at IS NULL AND quantity <= 10' + ws_clause, ws_params)
             low_stock_items = cursor.fetchone()['cnt']
-            cursor.execute('SELECT COUNT(*) as cnt FROM stock_movements')
+            ws_clause_m, ws_params_m = workshop_filter('sm')
+            cursor.execute('SELECT COUNT(*) as cnt FROM stock_movements sm WHERE 1=1' + ws_clause_m, ws_params_m)
             total_movements = cursor.fetchone()['cnt']
-            cursor.execute('SELECT COUNT(*) as cnt FROM stock_movements WHERE movement_type = "entry"')
+            cursor.execute('SELECT COUNT(*) as cnt FROM stock_movements sm WHERE sm.movement_type = "entry"' + ws_clause_m, ws_params_m)
             total_entries = cursor.fetchone()['cnt']
-            cursor.execute('SELECT COUNT(*) as cnt FROM stock_movements WHERE movement_type = "exit"')
+            cursor.execute('SELECT COUNT(*) as cnt FROM stock_movements sm WHERE sm.movement_type = "exit"' + ws_clause_m, ws_params_m)
             total_exits = cursor.fetchone()['cnt']
             cursor.execute('''
                 SELECT sm.movement_type, sm.quantity, sm.notes, sm.created_at, p.name, u.username
                 FROM stock_movements sm
                 JOIN products p ON sm.product_id = p.id
                 JOIN users u ON sm.user_id = u.id
+                WHERE 1=1''' + ws_clause_m + '''
                 ORDER BY sm.created_at DESC LIMIT 10
-            ''')
+            ''', ws_params_m)
             recent_movements = cursor.fetchall()
-            cursor.execute('SELECT code, name, quantity FROM products WHERE deleted_at IS NULL AND quantity <= 10 ORDER BY quantity ASC')
+            cursor.execute('SELECT code, name, quantity FROM products WHERE deleted_at IS NULL AND quantity <= 10' + ws_clause + ' ORDER BY quantity ASC', ws_params)
             low_stock_products = cursor.fetchall()
-            cursor.execute('SELECT COUNT(*) FROM products WHERE deleted_at IS NULL AND quantity = 0')
+            cursor.execute('SELECT COUNT(*) FROM products WHERE deleted_at IS NULL AND quantity = 0' + ws_clause, ws_params)
             zero_stock_count = cursor.fetchone()[0]
             cursor.execute('''
                 SELECT code, name, expiration_date
                 FROM products
                 WHERE deleted_at IS NULL AND expiration_date IS NOT NULL AND expiration_date < ?
+                ''' + ws_clause + '''
                 ORDER BY expiration_date DESC
-            ''', (datetime.now().date().strftime('%Y-%m-%d'),))
+            ''', [datetime.now().date().strftime('%Y-%m-%d')] + ws_params)
             expired_products = cursor.fetchall()
             expired_count = len(expired_products)
 
@@ -54,14 +58,14 @@ def register_dashboard_routes(app):
             chart_exits = []
             for day in last_30:
                 chart_labels.append(day[-5:])
-                cursor.execute("SELECT COUNT(*), COALESCE(SUM(quantity), 0) FROM stock_movements WHERE movement_type = 'entry' AND DATE(created_at) = ?", (day,))
+                cursor.execute("SELECT COUNT(*), COALESCE(SUM(quantity), 0) FROM stock_movements sm WHERE sm.movement_type = 'entry' AND DATE(sm.created_at) = ?" + ws_clause_m, [day] + ws_params_m)
                 e = cursor.fetchone()
                 chart_entries.append(e[1] or 0)
-                cursor.execute("SELECT COUNT(*), COALESCE(SUM(quantity), 0) FROM stock_movements WHERE movement_type = 'exit' AND DATE(created_at) = ?", (day,))
+                cursor.execute("SELECT COUNT(*), COALESCE(SUM(quantity), 0) FROM stock_movements sm WHERE sm.movement_type = 'exit' AND DATE(sm.created_at) = ?" + ws_clause_m, [day] + ws_params_m)
                 x = cursor.fetchone()
                 chart_exits.append(x[1] or 0)
 
-            cursor.execute("SELECT category, COUNT(*) as cnt FROM products WHERE deleted_at IS NULL AND category IS NOT NULL AND category != '' GROUP BY category ORDER BY cnt DESC LIMIT 10")
+            cursor.execute("SELECT category, COUNT(*) as cnt FROM products WHERE deleted_at IS NULL AND category IS NOT NULL AND category != ''" + ws_clause + " GROUP BY category ORDER BY cnt DESC LIMIT 10", ws_params)
             cat_data = cursor.fetchall()
             cat_labels = [r[0] for r in cat_data]
             cat_counts = [r[1] for r in cat_data]
@@ -69,9 +73,9 @@ def register_dashboard_routes(app):
             cursor.execute('''
                 SELECT p.name, SUM(sm.quantity) as total
                 FROM stock_movements sm JOIN products p ON sm.product_id = p.id
-                WHERE sm.movement_type = 'exit'
+                WHERE sm.movement_type = 'exit' ''' + ws_clause_m + '''
                 GROUP BY sm.product_id ORDER BY total DESC LIMIT 10
-            ''')
+            ''', ws_params_m)
             top_moved = cursor.fetchall()
             top_moved_labels = [r[0][:20] for r in top_moved]
             top_moved_data = [r[1] for r in top_moved]
@@ -79,8 +83,9 @@ def register_dashboard_routes(app):
             cursor.execute('''
                 SELECT supplier_name, COUNT(*) as cnt FROM products
                 WHERE deleted_at IS NULL AND supplier_name IS NOT NULL AND supplier_name != ''
+                ''' + ws_clause + '''
                 GROUP BY supplier_name ORDER BY cnt DESC LIMIT 10
-            ''')
+            ''', ws_params)
             top_supps = cursor.fetchall()
             top_supp_labels = [r[0] for r in top_supps]
             top_supp_data = [r[1] for r in top_supps]

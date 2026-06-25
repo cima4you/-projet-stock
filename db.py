@@ -179,7 +179,7 @@ def init_database():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                code TEXT UNIQUE NOT NULL,
+                code TEXT NOT NULL,
                 name TEXT NOT NULL,
                 category TEXT,
                 unit TEXT,
@@ -198,7 +198,9 @@ def init_database():
                 min_quantity INTEGER DEFAULT 0,
                 deleted_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                workshop_id INTEGER,
+                UNIQUE(code, workshop_id)
             )
         ''')
 
@@ -285,10 +287,78 @@ def init_database():
             )
         ''')
 
+        _workshops_table(cursor)
         _categories_table(cursor)
         _suppliers_table(cursor)
         _add_missing_columns(cursor)
         _create_default_admin(cursor)
+
+
+def _workshops_table(cursor):
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS workshops (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            location TEXT DEFAULT '',
+            city TEXT DEFAULT '',
+            description TEXT DEFAULT '',
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    existing = cursor.execute('SELECT COUNT(*) FROM workshops').fetchone()[0]
+    if existing == 0:
+        cursor.execute(
+            'INSERT INTO workshops (name, location, city, description) VALUES (?, ?, ?, ?)',
+            ('Atelier Principal', 'Principal', '', 'Atelier principal par défaut')
+        )
+        default_ws_id = cursor.lastrowid
+        add_workshop_id = IS_POSTGRES and 'ALTER TABLE users ADD COLUMN IF NOT EXISTS workshop_id INTEGER REFERENCES workshops(id)' or 'ALTER TABLE users ADD COLUMN workshop_id INTEGER'
+        try:
+            if IS_POSTGRES:
+                cursor.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS workshop_id INTEGER')
+            else:
+                cursor.execute('ALTER TABLE users ADD COLUMN workshop_id INTEGER')
+        except Exception:
+            pass
+        try:
+            if IS_POSTGRES:
+                cursor.execute('ALTER TABLE products ADD COLUMN IF NOT EXISTS workshop_id INTEGER')
+            else:
+                cursor.execute('ALTER TABLE products ADD COLUMN workshop_id INTEGER')
+        except Exception:
+            pass
+        try:
+            if IS_POSTGRES:
+                cursor.execute('ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS workshop_id INTEGER')
+            else:
+                cursor.execute('ALTER TABLE stock_movements ADD COLUMN workshop_id INTEGER')
+        except Exception:
+            pass
+        try:
+            if IS_POSTGRES:
+                cursor.execute('ALTER TABLE notification_recipients ADD COLUMN IF NOT EXISTS workshop_id INTEGER')
+            else:
+                cursor.execute('ALTER TABLE notification_recipients ADD COLUMN workshop_id INTEGER')
+        except Exception:
+            pass
+        cursor.execute('UPDATE users SET workshop_id = ? WHERE workshop_id IS NULL', (default_ws_id,))
+        cursor.execute('UPDATE products SET workshop_id = ? WHERE workshop_id IS NULL', (default_ws_id,))
+        cursor.execute('UPDATE stock_movements SET workshop_id = ? WHERE workshop_id IS NULL', (default_ws_id,))
+    else:
+        _add_workshop_columns(cursor)
+
+
+def _add_workshop_columns(cursor):
+    for table, col in [('users', 'workshop_id'), ('products', 'workshop_id'),
+                       ('stock_movements', 'workshop_id'), ('notification_recipients', 'workshop_id')]:
+        try:
+            if IS_POSTGRES:
+                cursor.execute(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} INTEGER')
+            else:
+                cursor.execute(f'ALTER TABLE {table} ADD COLUMN {col} INTEGER')
+        except Exception:
+            pass
 
 
 def _categories_table(cursor):
@@ -350,6 +420,61 @@ def _add_missing_columns(cursor):
                 import sqlite3
                 if not isinstance(sys.exc_info()[1], sqlite3.OperationalError):
                     raise
+    _rebuild_products_uniqueness(cursor)
+
+
+def _rebuild_products_uniqueness(cursor):
+    """Change UNIQUE(code) to UNIQUE(code, workshop_id) for multi-workshop support."""
+    if IS_POSTGRES:
+        try:
+            cursor.execute('ALTER TABLE products DROP CONSTRAINT IF EXISTS products_code_key')
+            cursor.execute('ALTER TABLE products ADD UNIQUE (code, workshop_id)')
+        except Exception:
+            pass
+        return
+    try:
+        cursor.execute('SELECT sql FROM sqlite_master WHERE type="table" AND name="products"')
+        create_sql = cursor.fetchone()[0]
+        if 'UNIQUE(code, workshop_id)' in create_sql:
+            return
+        cursor.execute('PRAGMA foreign_keys=OFF')
+        cursor.execute('DROP TABLE IF EXISTS products_new')
+        cursor.execute('''
+            CREATE TABLE products_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL,
+                name TEXT NOT NULL,
+                category TEXT,
+                unit TEXT,
+                quantity INTEGER DEFAULT 0,
+                brand TEXT,
+                condition_status TEXT,
+                chanter TEXT,
+                storage_zone TEXT,
+                notes TEXT,
+                supplier_name TEXT,
+                bc_number TEXT,
+                bl_number TEXT,
+                n_facture TEXT,
+                type_achat TEXT,
+                expiration_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                image_path TEXT,
+                min_quantity INTEGER DEFAULT 0,
+                deleted_at TIMESTAMP,
+                workshop_id INTEGER,
+                UNIQUE(code, workshop_id)
+            )
+        ''')
+        cursor.execute('INSERT OR IGNORE INTO products_new SELECT * FROM products')
+        cursor.execute('DROP TABLE products')
+        cursor.execute('ALTER TABLE products_new RENAME TO products')
+        cursor.execute('PRAGMA foreign_keys=ON')
+        logger.info("Migrated products table to UNIQUE(code, workshop_id)")
+    except Exception:
+        cursor.execute('PRAGMA foreign_keys=ON')
+        logger.error("Failed to migrate products table", exc_info=True)
 
 
 def _create_default_admin(cursor):

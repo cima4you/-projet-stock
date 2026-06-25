@@ -19,20 +19,34 @@ Système de Gestion de Stock (Stock Management System) - a bilingual (Arabic/Fre
 - **Encrypt .env:** `python protect_env.py`
 - **Database:** SQLite file `stock.db`
 
+## Multi-Workshop Architecture
+
+**Key pattern:** Every route that reads/writes stock data uses `workshop_filter()` from `utils.py` to scope queries by the logged-in user's workshop. Admins see all workshops unless they have a specific `workshop_id` in session.
+
+Flow:
+1. `routes/auth.py` stores `workshop_id` + `workshop_name` in `session` on login
+2. All data routes call `workshop_filter()` to append `AND workshop_id = ?` to SQL queries
+3. Notification functions filter recipients by `workshop_id` parameter
+
+**Important index notes for `SELECT * FROM users`:**
+After ALTER TABLE workshop_id was added as the last column, column indices are:
+- `user[1]` = username, `user[3]` = email, `user[4]` = role, `user[5]` = active, `user[10]` = workshop_id
+
 ## Project Structure
 
 | Path | Purpose |
 |---|---|
-| `routes/` | Flask blueprints (auth, dashboard, products, movements, users, categories, suppliers, reports, inventory, etc.) |
+| `routes/` | Flask blueprints (auth, dashboard, products, movements, users, categories, suppliers, reports, inventory, workshops, etc.) |
 | `templates/` | Jinja2 HTML templates |
 | `static/` | CSS, JS, uploaded logos/images |
 | `email_templates/` | HTML email templates (bilingual) |
 | `main.py` | App entry point |
 | `config.py` | Configuration (SMTP, paths, etc.) |
-| `db.py` | SQLite database setup & queries |
-| `utils.py` | Utility functions & decorators |
-| `notifications.py` | Email & WhatsApp notifications |
+| `db.py` | SQLite database setup & queries (includes `workshops` table + migration) |
+| `utils.py` | Utility functions, decorators, `workshop_filter()` helper |
+| `notifications.py` | Email & WhatsApp notifications (scoped by workshop_id) |
 | `csrf.py` | CSRF protection |
+| `translations.py` | Arabic/French bilingual translations |
 
 ## Routes (Blueprints)
 
@@ -50,6 +64,7 @@ Each blueprint is registered in `routes/__init__.py`. Main routes:
 - `/email` - Email configuration
 - `/notifications` - WhatsApp notifications
 - `/search` - Search functionality
+- `/workshops` - Workshop management (CRUD)
 
 ## Database
 

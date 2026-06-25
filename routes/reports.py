@@ -3,7 +3,7 @@ import logging
 from io import BytesIO
 from datetime import datetime
 from flask import render_template, session, request, Response, redirect, url_for, flash
-from utils import login_required, get_translation, log_audit
+from utils import login_required, get_translation, log_audit, workshop_filter
 from translations import TRANSLATIONS
 from db import get_db, query, query_one
 from config import LOGO_FOLDER
@@ -39,7 +39,8 @@ def register_report_routes(app):
     def export_pdf_products():
         try:
             from fpdf import FPDF
-            rows = query('SELECT * FROM products WHERE deleted_at IS NULL ORDER BY name')
+            ws_clause, ws_params = workshop_filter()
+            rows = query('SELECT * FROM products WHERE deleted_at IS NULL' + ws_clause + ' ORDER BY name', tuple(ws_params))
             pdf = _build_products_pdf(rows)
             return Response(pdf.getvalue(), mimetype='application/pdf',
                            headers={'Content-Disposition': f'attachment; filename=produits_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'})
@@ -53,6 +54,7 @@ def register_report_routes(app):
     def export_pdf_movements():
         try:
             from fpdf import FPDF
+            ws_clause, ws_params = workshop_filter('sm')
             rows = query('''
                 SELECT sm.created_at, sm.movement_type, p.code, p.name, sm.quantity,
                        u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
@@ -62,8 +64,9 @@ def register_report_routes(app):
                 FROM stock_movements sm
                 JOIN products p ON sm.product_id = p.id
                 JOIN users u ON sm.user_id = u.id
+                WHERE 1=1''' + ws_clause + '''
                 ORDER BY sm.created_at DESC LIMIT 500
-            ''')
+            ''', tuple(ws_params))
             pdf = _build_movements_pdf(rows)
             return Response(pdf.getvalue(), mimetype='application/pdf',
                            headers={'Content-Disposition': f'attachment; filename=mouvements_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf'})

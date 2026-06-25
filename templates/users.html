@@ -31,6 +31,7 @@
                                 <tr>
                                     <th>{{ translations.username }}</th>
                                     <th>{{ translations.email }}</th>
+                                    <th>{{ translations.workshop }}</th>
                                     <th>{{ translations.role }}</th>
                                     <th>{{ translations.status }}</th>
                                     <th>{{ translations.created_at }}</th>
@@ -43,6 +44,13 @@
                                 <tr>
                                     <td><strong>{{ user[1] }}</strong></td>
                                     <td>{{ user[2] }}</td>
+                                    <td>
+                                        {% if user[7] %}
+                                            <span class="badge bg-info">{{ user[8] }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% if user[3] == 'principal_admin' %}
                                             <span class="badge bg-danger">{{ translations.principal_admin }}</span>
