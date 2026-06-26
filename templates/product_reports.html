@@ -95,6 +95,7 @@
                                     <th>{{ translations.type_achat }}</th>
                                     <th>{{ translations.expiration_date }}</th>
                                     <th>{{ translations.created_at }}</th>
+                                    <th>Créé par</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -148,7 +149,8 @@
                                             -
                                         {% endif %}
                                     </td>
-                                    <td>{{ moment(product[16]).format('DD/MM/YYYY') if product[16] else '-' }}</td>
+                                    <td>{{ moment(product[17]).format('DD/MM/YYYY') if product[17] else '-' }}</td>
+                                    <td>{{ product[24] or '-' }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

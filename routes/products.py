@@ -129,11 +129,13 @@ def register_product_routes(app):
                     cursor.execute('''
                         INSERT INTO products (code, name, category, unit, quantity, brand, condition_status,
                                             chanter, storage_zone, notes, supplier_name, bc_number, bl_number,
-                                            n_facture, type_achat, expiration_date, min_quantity, workshop_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                            n_facture, type_achat, expiration_date, min_quantity, workshop_id,
+                                            created_by)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ''', (code, name, category, unit, quantity, brand, condition_status,
                           chanter, storage_zone, notes, supplier_name, bc_number, bl_number,
-                          n_facture, type_achat, expiration_date, min_quantity, ws_id))
+                          n_facture, type_achat, expiration_date, min_quantity, ws_id,
+                          session.get('user_id')))
                     product_id = cursor.lastrowid
                     log_audit('create', 'product', product_id, f"Création du produit {code} - {name}")
 
@@ -333,21 +335,21 @@ def register_product_routes(app):
             cursor = conn.cursor()
             category_filter = request.args.get('category', '')
             search_query = request.args.get('search', '')
-            q = 'SELECT * FROM products WHERE deleted_at IS NULL'
+            q = 'SELECT p.*, u.username as created_by_username FROM products p LEFT JOIN users u ON p.created_by = u.id WHERE p.deleted_at IS NULL'
             params = []
-            ws_clause, ws_params = workshop_filter()
+            ws_clause, ws_params = workshop_filter('p')
             q += ws_clause
             params.extend(ws_params)
             if category_filter:
-                q += ' AND category LIKE ?'
+                q += ' AND p.category LIKE ?'
                 params.append(f'%{category_filter}%')
             if search_query:
-                q += ' AND (code LIKE ? OR name LIKE ? OR brand LIKE ?)'
+                q += ' AND (p.code LIKE ? OR p.name LIKE ? OR p.brand LIKE ?)'
                 params.extend([f'%{search_query}%'] * 3)
-            q += ' ORDER BY name'
+            q += ' ORDER BY p.name'
             cursor.execute(q, params)
             products_data = cursor.fetchall()
-            cursor.execute('SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" AND deleted_at IS NULL')
+            cursor.execute('SELECT DISTINCT p.category FROM products p WHERE p.category IS NOT NULL AND p.category != "" AND p.deleted_at IS NULL')
             categories = [row[0] for row in cursor.fetchall()]
         return render_template('product_reports.html', products=products_data, categories=categories,
                              category_filter=category_filter, search_query=search_query,
@@ -361,21 +363,22 @@ def register_product_routes(app):
         try:
             category_filter = request.args.get('category', '')
             search_query = request.args.get('search', '')
-            q = 'SELECT * FROM products WHERE deleted_at IS NULL'
+            q = 'SELECT p.*, u.username as created_by_username FROM products p LEFT JOIN users u ON p.created_by = u.id WHERE p.deleted_at IS NULL'
             params = []
-            ws_clause, ws_params = workshop_filter()
+            ws_clause, ws_params = workshop_filter('p')
             q += ws_clause
             params.extend(ws_params)
             if category_filter:
-                q += ' AND category LIKE ?'
+                q += ' AND p.category LIKE ?'
                 params.append(f'%{category_filter}%')
             if search_query:
-                q += ' AND (code LIKE ? OR name LIKE ? OR brand LIKE ?)'
+                q += ' AND (p.code LIKE ? OR p.name LIKE ? OR p.brand LIKE ?)'
                 params.extend([f'%{search_query}%'] * 3)
-            q += ' ORDER BY name'
+            q += ' ORDER BY p.name'
 
             products_data = query(q, tuple(params))
-            columns = [row[0] for row in query('PRAGMA table_info(products)')]
+            prod_columns = [row[0] for row in query('PRAGMA table_info(products)')]
+            columns = prod_columns + ['created_by_username']
 
             french_headers = {
                 'id': 'ID', 'code': 'Code Produit', 'name': 'Nom du Produit',
@@ -385,7 +388,8 @@ def register_product_routes(app):
                 'supplier_name': 'Nom Fournisseur', 'bc_number': 'Numéro BC',
                 'bl_number': 'Numéro BL', 'n_facture': 'Numéro Facture',
                 'type_achat': "Type d'Achat", 'expiration_date': "Date d'Expiration",
-                'created_at': 'Créé le', 'updated_at': 'Mis à jour le'
+                'created_at': 'Créé le', 'updated_at': 'Mis à jour le',
+                'created_by': 'ID Créateur', 'created_by_username': 'Créé par'
             }
             headers = [french_headers.get(col, col) for col in columns]
 

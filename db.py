@@ -408,6 +408,8 @@ def _add_missing_columns(cursor):
         'ALTER TABLE stock_movements ADD COLUMN matricule TEXT',
         'ALTER TABLE products ADD COLUMN min_quantity INTEGER DEFAULT 0',
         'ALTER TABLE products ADD COLUMN deleted_at TIMESTAMP',
+        'ALTER TABLE products ADD COLUMN image_path TEXT',
+        'ALTER TABLE products ADD COLUMN created_by INTEGER',
     ]
     for migration in migrations:
         try:
@@ -464,10 +466,23 @@ def _rebuild_products_uniqueness(cursor):
                 min_quantity INTEGER DEFAULT 0,
                 deleted_at TIMESTAMP,
                 workshop_id INTEGER,
+                created_by INTEGER,
                 UNIQUE(code, workshop_id)
             )
         ''')
-        cursor.execute('INSERT OR IGNORE INTO products_new SELECT * FROM products')
+        # Get column names from old products table
+        cursor.execute('PRAGMA table_info(products)')
+        old_cols = [row[1] for row in cursor.fetchall()]
+        # Map old columns to new columns (with defaults for missing ones)
+        new_cols = ['id','code','name','category','unit','quantity','brand',
+                    'condition_status','chanter','storage_zone','notes',
+                    'supplier_name','bc_number','bl_number','n_facture',
+                    'type_achat','expiration_date','created_at','updated_at',
+                    'image_path','min_quantity','deleted_at','workshop_id']
+        common_cols = [c for c in new_cols if c in old_cols]
+        select_list = ', '.join(common_cols)
+        insert_list = ', '.join(common_cols)
+        cursor.execute(f'INSERT OR IGNORE INTO products_new ({insert_list}) SELECT {select_list} FROM products')
         cursor.execute('DROP TABLE products')
         cursor.execute('ALTER TABLE products_new RENAME TO products')
         cursor.execute('PRAGMA foreign_keys=ON')
