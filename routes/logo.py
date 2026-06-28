@@ -54,4 +54,18 @@ def register_logo_routes(app):
         logo_path = os.path.join(LOGO_FOLDER, 'logo.png')
         if os.path.exists(logo_path):
             return send_file(logo_path)
-        return '', 404
+        default_path = os.path.join(LOGO_FOLDER, 'default_logo.png')
+        if not os.path.exists(default_path):
+            try:
+                img = Image.new('RGB', (200, 60), (52, 152, 219))
+                from PIL import ImageDraw
+                draw = ImageDraw.Draw(img)
+                draw.rounded_rectangle([4, 4, 196, 56], radius=6, fill=(41, 128, 185))
+                draw.rectangle([10, 10, 30, 50], fill=(255, 255, 255))
+                draw.rectangle([35, 20, 55, 50], fill=(255, 255, 255))
+                draw.text((100, 30), "Stock", fill=(255, 255, 255), anchor="mm")
+                img.save(default_path, 'PNG')
+            except Exception as e:
+                logger.error(f"Error creating default logo: {e}")
+                return '', 404
+        return send_file(default_path)
