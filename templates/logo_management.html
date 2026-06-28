@@ -57,7 +57,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data">
+                    <form method="POST" action="{{ url_for('upload_logo') }}" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label for="logo_file" class="form-label">{{ translations.select_logo_file }} *</label>
                             <input type="file" class="form-control" id="logo_file" name="logo_file" accept=".png,.jpg,.jpeg" required>
