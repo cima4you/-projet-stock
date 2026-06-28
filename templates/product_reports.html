@@ -100,38 +100,38 @@
                             </thead>
                             <tbody>
                                 {% for product in products %}
-                                <tr class="{% if product[5] <= 10 %}table-warning{% endif %}{% if product[16] and product[16] < today %}table-danger{% endif %}">
-                                    <td><strong>{{ product[1] }}</strong></td>
-                                    <td>{{ product[2] }}</td>
-                                    <td>{{ product[3] or '-' }}</td>
+                                <tr class="{% if product['quantity'] <= 10 %}table-warning{% endif %}{% if product['expiration_date'] and product['expiration_date'] < today %}table-danger{% endif %}">
+                                    <td><strong>{{ product['code'] }}</strong></td>
+                                    <td>{{ product['name'] }}</td>
+                                    <td>{{ product['category'] or '-' }}</td>
                                     <td>
-                                        <span class="badge {% if product[5] <= 10 %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                            {{ product[5] }}
+                                        <span class="badge {% if product['quantity'] <= 10 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                            {{ product['quantity'] }}
                                         </span>
                                     </td>
-                                    <td>{{ product[4] or '-' }}</td>
-                                    <td>{{ product[6] or '-' }}</td>
-                                    <td>{{ product[7] or '-' }}</td>
-                                    <td>{{ product[8] or '-' }}</td>
-                                    <td>{{ product[9] or '-' }}</td>
-                                    <td>{{ product[11] or '-' }}</td>
+                                    <td>{{ product['unit'] or '-' }}</td>
+                                    <td>{{ product['brand'] or '-' }}</td>
+                                    <td>{{ product['condition_status'] or '-' }}</td>
+                                    <td>{{ product['chanter'] or '-' }}</td>
+                                    <td>{{ product['storage_zone'] or '-' }}</td>
+                                    <td>{{ product['supplier_name'] or '-' }}</td>
                                     <td>
-                                        {% if product[15] %}
-                                            {% if product[15] == 'achat_par_bc' %}
+                                        {% if product['type_achat'] %}
+                                            {% if product['type_achat'] == 'achat_par_bc' %}
                                                 <span class="badge bg-primary">{{ translations.achat_par_bc }}</span>
-                                            {% elif product[15] == 'achat_par_caisse' %}
+                                            {% elif product['type_achat'] == 'achat_par_caisse' %}
                                                 <span class="badge bg-warning text-dark">{{ translations.achat_par_caisse }}</span>
-                                            {% elif product[15] == 'achat_a_regulariser' %}
+                                            {% elif product['type_achat'] == 'achat_a_regulariser' %}
                                                 <span class="badge bg-info">{{ translations.achat_a_regulariser }}</span>
-                                            {% elif product[15] == 'transfert' %}
+                                            {% elif product['type_achat'] == 'transfert' %}
                                                 <span class="badge bg-secondary">{{ translations.transfert }}</span>
-                                            {% elif product[15] == 'consommation' %}
+                                            {% elif product['type_achat'] == 'consommation' %}
                                                 <span class="badge bg-dark">Consommation interne</span>
-                                            {% elif product[15] == 'perte' %}
+                                            {% elif product['type_achat'] == 'perte' %}
                                                 <span class="badge bg-danger">{{ translations.perte }}</span>
-                                            {% elif product[15] == 'vendu' %}
+                                            {% elif product['type_achat'] == 'vendu' %}
                                                 <span class="badge bg-success">{{ translations.vendu }}</span>
-                                            {% elif product[15] == 'expire' %}
+                                            {% elif product['type_achat'] == 'expire' %}
                                                 <span class="badge bg-secondary">{{ translations.expire }}</span>
                                             {% endif %}
                                         {% else %}
@@ -139,18 +139,18 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if product[16] %}
-                                            {% if product[16] < today %}
-                                                <span class="badge bg-danger">{{ product[16] }}</span>
+                                        {% if product['expiration_date'] %}
+                                            {% if product['expiration_date'] < today %}
+                                                <span class="badge bg-danger">{{ product['expiration_date'] }}</span>
                                             {% else %}
-                                                {{ product[16] }}
+                                                {{ product['expiration_date'] }}
                                             {% endif %}
                                         {% else %}
                                             -
                                         {% endif %}
                                     </td>
-                                    <td>{{ moment(product[17]).format('DD/MM/YYYY') if product[17] else '-' }}</td>
-                                    <td>{{ product[24] or '-' }}</td>
+                                    <td>{{ moment(product['created_at']).format('DD/MM/YYYY') if product['created_at'] else '-' }}</td>
+                                    <td>{{ product['created_by_username'] or '-' }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -170,10 +170,10 @@
                                         <strong>Total produits:</strong> {{ products|length }}
                                     </div>
                                     <div class="col-md-3">
-                                        <strong>Stock faible:</strong> {{ products|selectattr('5', 'le', 10)|list|length }}
+                                        <strong>Stock faible:</strong> {{ products|selectattr('quantity', 'le', 10)|list|length }}
                                     </div>
                                     <div class="col-md-3">
-                                        <strong>Avec expiration:</strong> {{ products|selectattr('16')|list|length }}
+                                        <strong>Avec expiration:</strong> {{ products|selectattr('expiration_date')|list|length }}
                                     </div>
                                     <div class="col-md-3">
                                         <strong>Catégories:</strong> {{ categories|length }}

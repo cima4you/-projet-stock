@@ -331,31 +331,36 @@ def register_product_routes(app):
     @app.route('/product_reports')
     @login_required
     def product_reports():
-        with get_db() as conn:
-            cursor = conn.cursor()
-            category_filter = request.args.get('category', '')
-            search_query = request.args.get('search', '')
-            q = 'SELECT p.*, u.username as created_by_username FROM products p LEFT JOIN users u ON p.created_by = u.id WHERE p.deleted_at IS NULL'
-            params = []
-            ws_clause, ws_params = workshop_filter('p')
-            q += ws_clause
-            params.extend(ws_params)
-            if category_filter:
-                q += ' AND p.category LIKE ?'
-                params.append(f'%{category_filter}%')
-            if search_query:
-                q += ' AND (p.code LIKE ? OR p.name LIKE ? OR p.brand LIKE ?)'
-                params.extend([f'%{search_query}%'] * 3)
-            q += ' ORDER BY p.name'
-            cursor.execute(q, params)
-            products_data = cursor.fetchall()
-            cursor.execute('SELECT DISTINCT p.category FROM products p WHERE p.category IS NOT NULL AND p.category != "" AND p.deleted_at IS NULL')
-            categories = [row[0] for row in cursor.fetchall()]
-        return render_template('product_reports.html', products=products_data, categories=categories,
-                             category_filter=category_filter, search_query=search_query,
-                             today=datetime.now().date().strftime('%Y-%m-%d'),
-                             translations=TRANSLATIONS[session.get('lang', 'fr')],
-                             lang=session.get('lang', 'fr'))
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                category_filter = request.args.get('category', '')
+                search_query = request.args.get('search', '')
+                q = 'SELECT p.*, u.username as created_by_username FROM products p LEFT JOIN users u ON p.created_by = u.id WHERE p.deleted_at IS NULL'
+                params = []
+                ws_clause, ws_params = workshop_filter('p')
+                q += ws_clause
+                params.extend(ws_params)
+                if category_filter:
+                    q += ' AND p.category LIKE ?'
+                    params.append(f'%{category_filter}%')
+                if search_query:
+                    q += ' AND (p.code LIKE ? OR p.name LIKE ? OR p.brand LIKE ?)'
+                    params.extend([f'%{search_query}%'] * 3)
+                q += ' ORDER BY p.name'
+                cursor.execute(q, params)
+                products_data = cursor.fetchall()
+                cursor.execute('SELECT DISTINCT p.category FROM products p WHERE p.category IS NOT NULL AND p.category != "" AND p.deleted_at IS NULL')
+                categories = [row[0] for row in cursor.fetchall()]
+            return render_template('product_reports.html', products=products_data, categories=categories,
+                                 category_filter=category_filter, search_query=search_query,
+                                 today=datetime.now().date().strftime('%Y-%m-%d'),
+                                 translations=TRANSLATIONS[session.get('lang', 'fr')],
+                                 lang=session.get('lang', 'fr'))
+        except Exception as e:
+            logger.error(f"Error loading product reports: {e}", exc_info=True)
+            flash(f"Erreur lors du chargement du rapport: {str(e)}", 'error')
+            return redirect(url_for('reports'))
 
     @app.route('/export_products_excel')
     @login_required
