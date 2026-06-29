@@ -5,6 +5,7 @@ import numpy as np
 from io import BytesIO
 from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, session, flash, Response
+from werkzeug.utils import secure_filename
 from db import get_db, query, query_one, execute
 from utils import login_required, admin_required, allowed_excel_file, get_translation, log_audit, workshop_filter
 from notifications import send_product_deletion_notification, send_product_addition_notification
