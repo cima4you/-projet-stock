@@ -63,6 +63,9 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'xlsx', 'xls'}
 LOGO_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
 
+# Cron secret for external cron jobs (cron-job.org, etc.)
+CRON_SECRET = os.environ.get('CRON_SECRET', 'change_this_in_production')
+
 # Daily report recipients
 DAILY_REPORT_RECIPIENTS = [
     email.strip() for email in os.environ.get(
