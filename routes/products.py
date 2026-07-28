@@ -370,7 +370,16 @@ def register_product_routes(app):
         try:
             category_filter = request.args.get('category', '')
             search_query = request.args.get('search', '')
-            q = 'SELECT p.*, u.username as created_by_username FROM products p LEFT JOIN users u ON p.created_by = u.id WHERE p.deleted_at IS NULL'
+            export_cols = [
+                'p.id', 'p.code', 'p.name', 'p.category', 'p.unit', 'p.quantity',
+                'p.brand', 'p.condition_status', 'p.chanter', 'p.storage_zone',
+                'p.notes', 'p.supplier_name', 'p.bc_number', 'p.bl_number',
+                'p.n_facture', 'p.type_achat', 'p.expiration_date',
+                'p.min_quantity', 'p.workshop_id', 'p.created_at', 'p.updated_at',
+                'p.created_by', 'p.deleted_at', 'p.image_path',
+                'u.username as created_by_username',
+            ]
+            q = f'SELECT {", ".join(export_cols)} FROM products p LEFT JOIN users u ON p.created_by = u.id WHERE p.deleted_at IS NULL'
             params = []
             ws_clause, ws_params = workshop_filter('p')
             q += ws_clause
@@ -384,21 +393,15 @@ def register_product_routes(app):
             q += ' ORDER BY p.name'
 
             products_data = query(q, tuple(params))
-            prod_columns = [row[1] for row in query('PRAGMA table_info(products)')]
-            columns = prod_columns + ['created_by_username']
 
-            french_headers = {
-                'id': 'ID', 'code': 'Code Produit', 'name': 'Nom du Produit',
-                'category': 'Catégorie', 'unit': 'Unité', 'quantity': 'Quantité',
-                'brand': 'Marque', 'condition_status': 'État', 'chanter': 'Chantier',
-                'storage_zone': 'Zone de Stockage', 'notes': 'Notes',
-                'supplier_name': 'Nom Fournisseur', 'bc_number': 'Numéro BC',
-                'bl_number': 'Numéro BL', 'n_facture': 'Numéro Facture',
-                'type_achat': "Type d'Achat", 'expiration_date': "Date d'Expiration",
-                'created_at': 'Créé le', 'updated_at': 'Mis à jour le',
-                'created_by': 'ID Créateur', 'created_by_username': 'Créé par'
-            }
-            headers = [french_headers.get(col, col) for col in columns]
+            headers = [
+                'ID', 'Code Produit', 'Nom du Produit', 'Catégorie', 'Unité', 'Quantité',
+                'Marque', 'État', 'Chantier', 'Zone de Stockage',
+                'Notes', 'Nom Fournisseur', 'Numéro BC', 'Numéro BL',
+                'Numéro Facture', "Type d'Achat", "Date d'Expiration",
+                'Qté Min', 'Atelier', 'Créé le', 'Mis à jour le',
+                'ID Créateur', 'Supprimé le', 'Image', 'Créé par',
+            ]
 
             output = BytesIO()
             workbook = xlsxwriter.Workbook(output)
