@@ -429,7 +429,11 @@ def register_product_routes(app):
             return Response(
                 output.getvalue(),
                 mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                headers={'Content-Disposition': f'attachment; filename=rapport_produits_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'}
+                headers={
+                    'Content-Disposition': f'attachment; filename=rapport_produits_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                    'Pragma': 'no-cache',
+                }
             )
         except Exception as e:
             logger.error(f"Error exporting products: {e}")
