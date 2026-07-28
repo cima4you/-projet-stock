@@ -89,10 +89,11 @@ def log_notification(recipient_email: str, notification_type: str, subject: str,
 
 def send_product_deletion_notification(product_info: dict, deleted_by_user: str, lang: str = 'fr', workshop_id=None):
     try:
-        ws_filter = ' AND (workshop_id = ? OR workshop_id IS NULL)' if workshop_id else ''
+        ws_filter = ' AND (nr.workshop_id = ? OR nr.workshop_id IS NULL)' if workshop_id else ''
         recipients = query('''
-            SELECT name, email FROM notification_recipients
-            WHERE active = 1 AND notify_product_deletion = 1''' + ws_filter,
+            SELECT nr.name, re.email FROM recipient_emails re
+            JOIN notification_recipients nr ON re.recipient_id = nr.id
+            WHERE re.active = 1 AND re.notify_product_deletion = 1''' + ws_filter,
             (workshop_id,) if workshop_id else ())
         if not recipients:
             return
@@ -136,20 +137,21 @@ def send_product_addition_notification(product_info: dict, movement_type: str, a
         raw_type = product_info.get('type_achat', '').strip()
         normalized_type = type_mapping.get(raw_type, raw_type)
 
-        ws_filter = ' AND (workshop_id = ? OR workshop_id IS NULL)' if workshop_id else ''
+        ws_filter = ' AND (nr.workshop_id = ? OR nr.workshop_id IS NULL)' if workshop_id else ''
         ws_params = (workshop_id,) if workshop_id else ()
         notification_fields = {
-            'BC': 'notify_achat_par_bc', 'Caisse': 'notify_achat_par_caisse',
-            'À régulariser': 'notify_achat_a_regulariser', 'Transfert': 'notify_transfert', 'Consommation': 'notify_consumption'
+            'BC': 're.notify_achat_par_bc', 'Caisse': 're.notify_achat_par_caisse',
+            'À régulariser': 're.notify_achat_a_regulariser', 'Transfert': 're.notify_transfert', 'Consommation': 're.notify_consumption'
         }
         field = notification_fields.get(normalized_type)
         if field:
-            recipients = query(f'SELECT name, email FROM notification_recipients WHERE active = 1 AND {field} = 1' + ws_filter, ws_params)
+            recipients = query(f'SELECT nr.name, re.email FROM recipient_emails re JOIN notification_recipients nr ON re.recipient_id = nr.id WHERE re.active = 1 AND {field} = 1' + ws_filter, ws_params)
         else:
             recipients = query('''
-                SELECT name, email FROM notification_recipients
-                WHERE active = 1 AND (notify_achat_par_bc = 1 OR notify_achat_par_caisse = 1
-                OR notify_achat_a_regulariser = 1 OR notify_transfert = 1 OR notify_consumption = 1)
+                SELECT nr.name, re.email FROM recipient_emails re
+                JOIN notification_recipients nr ON re.recipient_id = nr.id
+                WHERE re.active = 1 AND (re.notify_achat_par_bc = 1 OR re.notify_achat_par_caisse = 1
+                OR re.notify_achat_a_regulariser = 1 OR re.notify_transfert = 1 OR re.notify_consumption = 1)
             ''' + ws_filter, ws_params)
         if not recipients:
             return
@@ -248,11 +250,12 @@ def send_product_exit_notification(product_info: dict, movement_type: str, remov
         notify_field = notify_field_map.get(exit_type)
         if not notify_field:
             return
-        ws_filter = ' AND (workshop_id = ? OR workshop_id IS NULL)' if workshop_id else ''
+        ws_filter = ' AND (nr.workshop_id = ? OR nr.workshop_id IS NULL)' if workshop_id else ''
         ws_params = (workshop_id,) if workshop_id else ()
         recipients = query(f'''
-            SELECT name, email FROM notification_recipients
-            WHERE active = 1 AND {notify_field} = 1''' + ws_filter, ws_params)
+            SELECT nr.name, re.email FROM recipient_emails re
+            JOIN notification_recipients nr ON re.recipient_id = nr.id
+            WHERE re.active = 1 AND re.{notify_field} = 1''' + ws_filter, ws_params)
         if not recipients:
             return
 
@@ -345,11 +348,12 @@ def send_product_exit_notification(product_info: dict, movement_type: str, remov
 
 def send_expiring_products_notification(expiring_products: list, lang: str = 'fr', workshop_id=None):
     try:
-        ws_filter = ' AND (workshop_id = ? OR workshop_id IS NULL)' if workshop_id else ''
+        ws_filter = ' AND (nr.workshop_id = ? OR nr.workshop_id IS NULL)' if workshop_id else ''
         ws_params = (workshop_id,) if workshop_id else ()
         recipients = query('''
-            SELECT name, email FROM notification_recipients
-            WHERE active = 1 AND notify_product_expiration = 1''' + ws_filter, ws_params)
+            SELECT nr.name, re.email FROM recipient_emails re
+            JOIN notification_recipients nr ON re.recipient_id = nr.id
+            WHERE re.active = 1 AND re.notify_product_expiration = 1''' + ws_filter, ws_params)
         if not recipients or not expiring_products:
             return
 

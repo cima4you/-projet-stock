@@ -247,6 +247,36 @@ def init_database():
         ''')
 
         cursor.execute('''
+            CREATE TABLE IF NOT EXISTS recipient_emails (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipient_id INTEGER NOT NULL REFERENCES notification_recipients(id) ON DELETE CASCADE,
+                email TEXT NOT NULL,
+                active INTEGER DEFAULT 1,
+                notify_achat_par_bc INTEGER DEFAULT 1,
+                notify_achat_par_caisse INTEGER DEFAULT 1,
+                notify_achat_a_regulariser INTEGER DEFAULT 1,
+                notify_transfert INTEGER DEFAULT 1,
+                notify_product_deletion INTEGER DEFAULT 1,
+                notify_product_expiration INTEGER DEFAULT 1,
+                notify_transfert_exit INTEGER DEFAULT 1,
+                notify_consumption INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Migration: migrate existing emails to recipient_emails
+        existing = query('SELECT id, email, notify_achat_par_bc, notify_achat_par_caisse, notify_achat_a_regulariser, notify_transfert, notify_product_deletion, notify_product_expiration, notify_transfert_exit, notify_consumption FROM notification_recipients WHERE email != ""')
+        for row in existing:
+            cnt = query_one('SELECT COUNT(*) FROM recipient_emails WHERE recipient_id = ? AND email = ?', (row[0], row[1]))
+            if not cnt or cnt[0] == 0:
+                execute('''
+                    INSERT INTO recipient_emails (recipient_id, email, active, notify_achat_par_bc, notify_achat_par_caisse,
+                        notify_achat_a_regulariser, notify_transfert, notify_product_deletion,
+                        notify_product_expiration, notify_transfert_exit, notify_consumption)
+                    VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS notification_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 recipient_email TEXT NOT NULL,

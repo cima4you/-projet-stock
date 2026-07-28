@@ -40,14 +40,14 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">{{ translations.configured_email }}:</label>
-                                <div class="form-control-plaintext">{{ email_address or 'Non configuré' }}</div>
+                                <div class="form-control-plaintext">{{ email_address or 'Non configur\u00e9' }}</div>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">{{ translations.email_status }}:</label>
                                 <div class="form-control-plaintext">
-                                    {% if email_status == 'Configuré' %}
+                                    {% if email_status == 'Configur\u00e9' %}
                                         <span class="badge bg-success">{{ email_status }}</span>
                                     {% else %}
                                         <span class="badge bg-danger">{{ email_status }}</span>
@@ -88,7 +88,7 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>{{ translations.recipient_name }}</th>
-                                    <th>{{ translations.email }}</th>
+                                    <th>Email</th>
                                     <th>{{ translations.workshop }}</th>
                                     <th>{{ translations.notification_preferences }}</th>
                                     <th>{{ translations.status }}</th>
@@ -98,39 +98,38 @@
                             <tbody>
                                 {% for recipient in recipients %}
                                 <tr>
-                                    <td>{{ recipient[1] }}</td>
-                                    <td>{{ recipient[2] }}</td>
+                                    <td rowspan="{{ recipient._emails|length + 1 }}" style="vertical-align: middle;">
+                                        <strong>{{ recipient[1] }}</strong>
+                                    </td>
+                                </tr>
+                                {% for email in recipient._emails %}
+                                <tr>
                                     <td>
-                                        {% if recipient[11] %}
-                                            <span class="badge bg-info">{{ recipient[12] }}</span>
+                                        <span class="small text-muted">{{ email[1] }}</span>
+                                    </td>
+                                    <td>
+                                        {% if recipient[3] %}
+                                            <span class="badge bg-info">{{ recipient[4] }}</span>
                                         {% else %}
                                             <span class="text-muted">{{ translations.all_workshops }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
-                                            {% if recipient[4] %}
-                                                <span class="badge bg-info">{{ translations.achat_par_bc }}</span>
-                                            {% endif %}
-                                            {% if recipient[5] %}
-                                                <span class="badge bg-info">{{ translations.achat_par_caisse }}</span>
-                                            {% endif %}
-                                            {% if recipient[6] %}
-                                                <span class="badge bg-info">{{ translations.achat_a_regulariser }}</span>
-                                            {% endif %}
-                                            {% if recipient[7] %}
-                                                <span class="badge bg-info">{{ translations.transfert }}</span>
-                                            {% endif %}
-                                            {% if recipient[8] %}
-                                                <span class="badge bg-warning">{{ translations.product_deletion }}</span>
-                                            {% endif %}
-                                            {% if recipient[9] %}
-                                                <span class="badge bg-danger">{{ translations.product_expiration }}</span>
+                                            {% if email[3] %}<span class="badge bg-info">BC</span>{% endif %}
+                                            {% if email[4] %}<span class="badge bg-info">Caisse</span>{% endif %}
+                                            {% if email[5] %}<span class="badge bg-info">\u00c0 r\u00e9gulariser</span>{% endif %}
+                                            {% if email[6] %}<span class="badge bg-info">Transfert</span>{% endif %}
+                                            {% if email[9] %}<span class="badge bg-secondary">Consommation</span>{% endif %}
+                                            {% if email[7] %}<span class="badge bg-warning">Suppression</span>{% endif %}
+                                            {% if email[8] %}<span class="badge bg-danger">Expiration</span>{% endif %}
+                                            {% if not email[3] and not email[4] and not email[5] and not email[6] and not email[7] and not email[8] and not email[9] %}
+                                                <span class="text-muted">{{ translations.no_notifications }}</span>
                                             {% endif %}
                                         </div>
                                     </td>
                                     <td>
-                                        {% if recipient[3] %}
+                                        {% if email[2] %}
                                             <span class="badge bg-success">{{ translations.active }}</span>
                                         {% else %}
                                             <span class="badge bg-secondary">{{ translations.inactive }}</span>
@@ -141,12 +140,16 @@
                                             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRecipientModal{{ recipient[0] }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <a href="{{ url_for('delete_recipient', recipient_id=recipient[0]) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce destinataire ?')">
+                                            <a href="{{ url_for('delete_email', email_id=email[0]) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer cet email ?')">
+                                                <i class="fas fa-envelope-minus"></i>
+                                            </a>
+                                            <a href="{{ url_for('delete_recipient', recipient_id=recipient[0]) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce destinataire et tous ses emails ?')">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
                                     </td>
                                 </tr>
+                                {% endfor %}
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -154,7 +157,7 @@
                     {% else %}
                     <div class="text-center py-5">
                         <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">Aucun destinataire configuré</p>
+                        <p class="text-muted">Aucun destinataire configur\u00e9</p>
                     </div>
                     {% endif %}
                 </div>
@@ -165,7 +168,7 @@
 
 <!-- Add Recipient Modal -->
 <div class="modal fade" id="addRecipientModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">{{ translations.add_recipient }}</h5>
@@ -176,11 +179,6 @@
                     <div class="mb-3">
                         <label for="name" class="form-label">{{ translations.recipient_name }} *</label>
                         <input type="text" class="form-control" id="name" name="name" required>
-                        <div class="form-text">{{ translations.recipient_name_help }}</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">{{ translations.recipient_email }} *</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
                     </div>
                     <div class="mb-3">
                         <label for="workshop_id" class="form-label">{{ translations.select_workshop }}</label>
@@ -190,59 +188,50 @@
                             <option value="{{ ws[0] }}">{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-text">{{ translations.recipient_workshop_help }}</div>
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label">{{ translations.notification_preferences }}</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_achat_par_bc" name="notify_achat_par_bc" checked>
-                            <label class="form-check-label" for="notify_achat_par_bc">
-                                {{ translations.achat_par_bc }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_achat_par_caisse" name="notify_achat_par_caisse" checked>
-                            <label class="form-check-label" for="notify_achat_par_caisse">
-                                {{ translations.achat_par_caisse }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_achat_a_regulariser" name="notify_achat_a_regulariser" checked>
-                            <label class="form-check-label" for="notify_achat_a_regulariser">
-                                {{ translations.achat_a_regulariser }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_transfert" name="notify_transfert" checked>
-                            <label class="form-check-label" for="notify_transfert">
-                                {{ translations.transfert }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_consumption" name="notify_consumption" checked>
-                            <label class="form-check-label" for="notify_consumption">
-                                Consommation interne
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_product_deletion" name="notify_product_deletion" checked>
-                            <label class="form-check-label" for="notify_product_deletion">
-                                {{ translations.product_deletion }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_product_expiration" name="notify_product_expiration" checked>
-                            <label class="form-check-label" for="notify_product_expiration">
-                                {{ translations.product_expiration }}
-                            </label>
+                        <div class="row g-2">
+                            {% set notify_items = [
+                                ('notify_achat_par_bc', 'Achat par BC', 'info'),
+                                ('notify_achat_par_caisse', 'Achat par Caisse', 'info'),
+                                ('notify_achat_a_regulariser', 'Achat \u00e0 r\u00e9gulariser', 'info'),
+                                ('notify_transfert', 'Transfert', 'info'),
+                                ('notify_consumption', 'Consommation interne', 'secondary'),
+                                ('notify_product_deletion', 'Suppression', 'warning'),
+                                ('notify_product_expiration', 'Expiration', 'danger'),
+                            ] %}
+                            <div class="col-12 mb-2"><small class="text-muted"><i class="fas fa-check-square me-1"></i>Ces pr\u00e9f\u00e9rences s'appliquent \u00e0 tous les emails ci-dessous</small></div>
+                            {% for key, label, cls in notify_items %}
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="add_{{ key }}" name="{{ key }}" checked>
+                                    <label class="form-check-label small" for="add_{{ key }}">{{ label }}</label>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Adresses email <span class="text-danger">*</span></label>
+                        <div id="add_email_list">
+                            <div class="input-group mb-2 email-entry">
+                                <input type="email" class="form-control" name="email[]" placeholder="email@exemple.com" required>
+                                <button type="button" class="btn btn-outline-danger remove-email" style="display:none;"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addEmailField('add_email_list')">
+                            <i class="fas fa-plus me-1"></i> Ajouter un email
+                        </button>
+                    </div>
+
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="active" name="active" checked>
-                        <label class="form-check-label" for="active">
+                        <input class="form-check-input" type="checkbox" id="add_active" name="active" checked>
+                        <label class="form-check-label" for="add_active">
                             {{ translations.active }}
                         </label>
-                        <div class="form-text">{{ translations.notification_active_help }}</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -257,10 +246,10 @@
 <!-- Edit Recipient Modals -->
 {% for recipient in recipients %}
 <div class="modal fade" id="editRecipientModal{{ recipient[0] }}" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">{{ translations.edit }} {{ translations.recipient_name }}</h5>
+                <h5 class="modal-title">{{ translations.edit }}: {{ recipient[1] }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{{ url_for('edit_recipient', recipient_id=recipient[0]) }}">
@@ -270,69 +259,64 @@
                         <input type="text" class="form-control" id="name{{ recipient[0] }}" name="name" value="{{ recipient[1] }}" required>
                     </div>
                     <div class="mb-3">
-                        <label for="email{{ recipient[0] }}" class="form-label">{{ translations.recipient_email }} *</label>
-                        <input type="email" class="form-control" id="email{{ recipient[0] }}" name="email" value="{{ recipient[2] }}" required>
-                    </div>
-                    <div class="mb-3">
                         <label for="workshop_id{{ recipient[0] }}" class="form-label">{{ translations.select_workshop }}</label>
                         <select class="form-select" id="workshop_id{{ recipient[0] }}" name="workshop_id">
                             <option value="">{{ translations.all_workshops }}</option>
                             {% for ws in workshops %}
-                            <option value="{{ ws[0] }}" {% if recipient[11] and recipient[11] == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
+                            <option value="{{ ws[0] }}" {% if recipient[3] and recipient[3] == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-text">{{ translations.recipient_workshop_help }}</div>
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">{{ translations.notification_preferences }}</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_achat_par_bc{{ recipient[0] }}" name="notify_achat_par_bc" {% if recipient[4] %}checked{% endif %}>
-                            <label class="form-check-label" for="notify_achat_par_bc{{ recipient[0] }}">
-                                {{ translations.achat_par_bc }}
-                            </label>
+                        <label class="form-label">Adresses email</label>
+                        <div id="edit_email_list_{{ recipient[0] }}">
+                            {% for email in recipient._emails %}
+                            <div class="card mb-2 email-card">
+                                <div class="card-body py-2">
+                                    <input type="hidden" name="email_id[]" value="{{ email[0] }}">
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-md-4">
+                                            <input type="email" class="form-control form-control-sm" name="email[]" value="{{ email[1] }}" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="ea_{{ email[0] }}" name="email_active[]" value="1" {% if email[2] %}checked{% endif %}>
+                                                <label class="form-check-label small" for="ea_{{ email[0] }}">Actif</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% set edit_labels = [
+                                                    ('notify_achat_par_bc', email[3], 'BC'),
+                                                    ('notify_achat_par_caisse', email[4], 'Caisse'),
+                                                    ('notify_achat_a_regulariser', email[5], 'R\u00e9gul'),
+                                                    ('notify_transfert', email[6], 'Transfert'),
+                                                    ('notify_consumption', email[9], 'Conso'),
+                                                    ('notify_product_deletion', email[7], 'Suppr'),
+                                                    ('notify_product_expiration', email[8], 'Expir'),
+                                                ] %}
+                                                {% for key, val, lbl in edit_labels %}
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="checkbox" id="{{ key }}_{{ email[0] }}" name="{{ key }}_{{ email[0] }}" {% if val %}checked{% endif %}>
+                                                    <label class="form-check-label small" for="{{ key }}_{{ email[0] }}">{{ lbl }}</label>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-email-entry" onclick="this.closest('.email-card').remove()">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_achat_par_caisse{{ recipient[0] }}" name="notify_achat_par_caisse" {% if recipient[5] %}checked{% endif %}>
-                            <label class="form-check-label" for="notify_achat_par_caisse{{ recipient[0] }}">
-                                {{ translations.achat_par_caisse }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_achat_a_regulariser{{ recipient[0] }}" name="notify_achat_a_regulariser" {% if recipient[6] %}checked{% endif %}>
-                            <label class="form-check-label" for="notify_achat_a_regulariser{{ recipient[0] }}">
-                                {{ translations.achat_a_regulariser }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_transfert{{ recipient[0] }}" name="notify_transfert" {% if recipient[7] %}checked{% endif %}>
-                            <label class="form-check-label" for="notify_transfert{{ recipient[0] }}">
-                                {{ translations.transfert }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_consumption{{ recipient[0] }}" name="notify_consumption" {% if recipient[10] %}checked{% endif %}>
-                            <label class="form-check-label" for="notify_consumption{{ recipient[0] }}">
-                                Consommation interne
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_product_deletion{{ recipient[0] }}" name="notify_product_deletion" {% if recipient[8] %}checked{% endif %}>
-                            <label class="form-check-label" for="notify_product_deletion{{ recipient[0] }}">
-                                {{ translations.product_deletion }}
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="notify_product_expiration{{ recipient[0] }}" name="notify_product_expiration" {% if recipient[9] %}checked{% endif %}>
-                            <label class="form-check-label" for="notify_product_expiration{{ recipient[0] }}">
-                                {{ translations.product_expiration }}
-                            </label>
-                        </div>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="active{{ recipient[0] }}" name="active" {% if recipient[3] %}checked{% endif %}>
-                        <label class="form-check-label" for="active{{ recipient[0] }}">
-                            {{ translations.active }}
-                        </label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addEditEmailField('edit_email_list_{{ recipient[0] }}')">
+                            <i class="fas fa-plus me-1"></i> Ajouter un email
+                        </button>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -354,10 +338,10 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Cliquer sur le bouton pour envoyer un email de test à l'adresse configurée.</p>
+                <p>Cliquer sur le bouton pour envoyer un email de test \u00e0 l'adresse configur\u00e9e.</p>
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
-                    Email de destination: {{ email_address or 'Aucun email configuré' }}
+                    Email de destination: {{ email_address or 'Aucun email configur\u00e9' }}
                 </div>
             </div>
             <div class="modal-footer">
@@ -370,4 +354,34 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function addEmailField(containerId) {
+    var container = document.getElementById(containerId);
+    var entry = document.createElement('div');
+    entry.className = 'input-group mb-2 email-entry';
+    entry.innerHTML = '<input type="email" class="form-control" name="email[]" placeholder="email@exemple.com">' +
+        '<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>';
+    container.appendChild(entry);
+}
+
+function addEditEmailField(containerId) {
+    var container = document.getElementById(containerId);
+    var card = document.createElement('div');
+    card.className = 'card mb-2 email-card';
+    card.innerHTML = '<div class="card-body py-2">' +
+        '<input type="hidden" name="email_id[]" value="0">' +
+        '<div class="row g-2 align-items-center">' +
+        '<div class="col-md-4"><input type="email" class="form-control form-control-sm" name="email[]" placeholder="email@exemple.com" required></div>' +
+        '<div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="email_active[]" value="1" checked><label class="form-check-label small">Actif</label></div></div>' +
+        '<div class="col-md-5"><div class="d-flex flex-wrap gap-1">' +
+        '{% for key, label, cls in notify_items %}<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="{{ key }}_new" name="{{ key }}_0" checked><label class="form-check-label small" for="{{ key }}_new">{{ label }}</label></div>{% endfor %}' +
+        '</div></div>' +
+        '<div class="col-md-1"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'.email-card\').remove()"><i class="fas fa-times"></i></button></div>' +
+        '</div></div>';
+    container.appendChild(card);
+}
+</script>
 {% endblock %}

@@ -1,6 +1,6 @@
 import logging
 from flask import render_template, request, redirect, url_for, session, flash
-from db import get_db, execute, query
+from db import get_db, execute, query, query_one
 from utils import admin_required, get_translation, workshop_filter
 from notifications import send_email, check_expiring_products, send_expiring_products_notification
 from translations import TRANSLATIONS
@@ -19,15 +19,21 @@ def register_email_routes(app):
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT nr.id, nr.name, nr.email, nr.active, nr.notify_achat_par_bc, nr.notify_achat_par_caisse,
-                       nr.notify_achat_a_regulariser, nr.notify_transfert, nr.notify_product_deletion,
-                       nr.notify_product_expiration, nr.notify_consumption, nr.workshop_id,
-                       COALESCE(w.name, '') as workshop_name
+                SELECT nr.id, nr.name, nr.active, nr.workshop_id, COALESCE(w.name, '') as workshop_name
                 FROM notification_recipients nr
                 LEFT JOIN workshops w ON nr.workshop_id = w.id
                 ORDER BY nr.name
             ''')
             recipients = cursor.fetchall()
+            for r in recipients:
+                cursor.execute('''
+                    SELECT id, email, active, notify_achat_par_bc, notify_achat_par_caisse,
+                           notify_achat_a_regulariser, notify_transfert, notify_product_deletion,
+                           notify_product_expiration, notify_consumption
+                    FROM recipient_emails
+                    WHERE recipient_id = ? ORDER BY email
+                ''', (r[0],))
+                r._emails = cursor.fetchall()
         return render_template('email_management.html', email_status=email_status,
                              smtp_server=SMTP_SERVER, email_address=EMAIL_ADDRESS,
                              recipients=recipients, workshops=workshops,
@@ -52,31 +58,50 @@ def register_email_routes(app):
             flash(f"Erreur: {str(e)}", 'error')
         return redirect(url_for('email_management'))
 
+    def _parse_notification_form(form):
+        return (
+            1 if 'notify_achat_par_bc' in form else 0,
+            1 if 'notify_achat_par_caisse' in form else 0,
+            1 if 'notify_achat_a_regulariser' in form else 0,
+            1 if 'notify_transfert' in form else 0,
+            1 if 'notify_consumption' in form else 0,
+            1 if 'notify_product_deletion' in form else 0,
+            1 if 'notify_product_expiration' in form else 0,
+        )
+
     @app.route('/add_recipient', methods=['POST'])
     @admin_required
     def add_recipient():
         try:
             name = request.form['name'].strip()
-            email = request.form['email'].strip()
             workshop_id = request.form.get('workshop_id', '') or None
             if workshop_id:
                 workshop_id = int(workshop_id)
-            notify_bc = 1 if 'notify_achat_par_bc' in request.form else 0
-            notify_caisse = 1 if 'notify_achat_par_caisse' in request.form else 0
-            notify_reg = 1 if 'notify_achat_a_regulariser' in request.form else 0
-            notify_transfert = 1 if 'notify_transfert' in request.form else 0
-            notify_consumption = 1 if 'notify_consumption' in request.form else 0
-            notify_del = 1 if 'notify_product_deletion' in request.form else 0
-            notify_exp = 1 if 'notify_product_expiration' in request.form else 0
-            active = 1 if 'active' in request.form else 0
-            execute('''
-                INSERT INTO notification_recipients
-                (name, email, active, notify_achat_par_bc, notify_achat_par_caisse,
-                 notify_achat_a_regulariser, notify_transfert, notify_consumption,
-                 notify_product_deletion, notify_product_expiration, workshop_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (name, email, active, notify_bc, notify_caisse, notify_reg,
-                  notify_transfert, notify_consumption, notify_del, notify_exp, workshop_id))
+
+            emails = request.form.getlist('email[]')
+            if not emails or not any(e.strip() for e in emails):
+                flash("Veuillez ajouter au moins un email.", 'error')
+                return redirect(url_for('email_management'))
+
+            recipient_id = execute('''
+                INSERT INTO notification_recipients (name, workshop_id)
+                VALUES (?, ?)
+            ''', (name, workshop_id))
+
+            notify_bc, notify_caisse, notify_reg, notify_transfert, \
+                notify_consumption, notify_del, notify_exp = _parse_notification_form(request.form)
+
+            for email in emails:
+                email = email.strip()
+                if email:
+                    execute('''
+                        INSERT INTO recipient_emails
+                        (recipient_id, email, active, notify_achat_par_bc, notify_achat_par_caisse,
+                         notify_achat_a_regulariser, notify_transfert, notify_consumption,
+                         notify_product_deletion, notify_product_expiration)
+                        VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (recipient_id, email, notify_bc, notify_caisse, notify_reg,
+                          notify_transfert, notify_consumption, notify_del, notify_exp))
             flash(get_translation('recipient_added_successfully'), 'success')
         except Exception as e:
             logger.error(f"Error adding recipient: {e}")
@@ -88,28 +113,51 @@ def register_email_routes(app):
     def edit_recipient(recipient_id):
         try:
             name = request.form['name'].strip()
-            email = request.form['email'].strip()
             workshop_id = request.form.get('workshop_id', '') or None
             if workshop_id:
                 workshop_id = int(workshop_id)
-            notify_bc = 1 if 'notify_achat_par_bc' in request.form else 0
-            notify_caisse = 1 if 'notify_achat_par_caisse' in request.form else 0
-            notify_reg = 1 if 'notify_achat_a_regulariser' in request.form else 0
-            notify_transfert = 1 if 'notify_transfert' in request.form else 0
-            notify_consumption = 1 if 'notify_consumption' in request.form else 0
-            notify_del = 1 if 'notify_product_deletion' in request.form else 0
-            notify_exp = 1 if 'notify_product_expiration' in request.form else 0
-            active = 1 if 'active' in request.form else 0
-            with get_db() as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE notification_recipients
-                    SET name=?, email=?, active=?, notify_achat_par_bc=?, notify_achat_par_caisse=?,
-                        notify_achat_a_regulariser=?, notify_transfert=?, notify_consumption=?,
-                        notify_product_deletion=?, notify_product_expiration=?, workshop_id=?
-                    WHERE id=?
-                ''', (name, email, active, notify_bc, notify_caisse, notify_reg,
-                      notify_transfert, notify_consumption, notify_del, notify_exp, workshop_id, recipient_id))
+
+            execute('UPDATE notification_recipients SET name=?, workshop_id=? WHERE id=?',
+                    (name, workshop_id, recipient_id))
+
+            email_ids = request.form.getlist('email_id[]')
+            emails = request.form.getlist('email[]')
+            email_active = request.form.getlist('email_active[]')
+
+            for i in range(len(emails)):
+                eid = int(email_ids[i]) if i < len(email_ids) else 0
+                email = emails[i].strip()
+                if not email:
+                    continue
+                active = 1 if (i < len(email_active) and email_active[i] == '1') else 1
+                fields = _parse_notification_form(request.form)
+                suffix = f"_{eid}" if eid else ""
+                notify_bc = 1 if f'notify_achat_par_bc{suffix}' in request.form else 0
+                notify_caisse = 1 if f'notify_achat_par_caisse{suffix}' in request.form else 0
+                notify_reg = 1 if f'notify_achat_a_regulariser{suffix}' in request.form else 0
+                notify_transfert = 1 if f'notify_transfert{suffix}' in request.form else 0
+                notify_consumption = 1 if f'notify_consumption{suffix}' in request.form else 0
+                notify_del = 1 if f'notify_product_deletion{suffix}' in request.form else 0
+                notify_exp = 1 if f'notify_product_expiration{suffix}' in request.form else 0
+
+                if eid:
+                    execute('''
+                        UPDATE recipient_emails
+                        SET email=?, active=?, notify_achat_par_bc=?, notify_achat_par_caisse=?,
+                            notify_achat_a_regulariser=?, notify_transfert=?, notify_consumption=?,
+                            notify_product_deletion=?, notify_product_expiration=?
+                        WHERE id=?
+                    ''', (email, active, notify_bc, notify_caisse, notify_reg,
+                          notify_transfert, notify_consumption, notify_del, notify_exp, eid))
+                else:
+                    execute('''
+                        INSERT INTO recipient_emails
+                        (recipient_id, email, active, notify_achat_par_bc, notify_achat_par_caisse,
+                         notify_achat_a_regulariser, notify_transfert, notify_consumption,
+                         notify_product_deletion, notify_product_expiration)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (recipient_id, email, active, notify_bc, notify_caisse, notify_reg,
+                          notify_transfert, notify_consumption, notify_del, notify_exp))
             flash("Destinataire mis à jour avec succès", 'success')
         except Exception as e:
             logger.error(f"Error updating recipient: {e}")
@@ -120,10 +168,22 @@ def register_email_routes(app):
     @admin_required
     def delete_recipient(recipient_id):
         try:
+            execute('DELETE FROM recipient_emails WHERE recipient_id = ?', (recipient_id,))
             execute('DELETE FROM notification_recipients WHERE id = ?', (recipient_id,))
             flash("Destinataire supprimé avec succès", 'success')
         except Exception as e:
             logger.error(f"Error deleting recipient: {e}")
+            flash(f"Erreur: {str(e)}", 'error')
+        return redirect(url_for('email_management'))
+
+    @app.route('/delete_email/<int:email_id>')
+    @admin_required
+    def delete_email(email_id):
+        try:
+            execute('DELETE FROM recipient_emails WHERE id = ?', (email_id,))
+            flash("Email supprimé avec succès", 'success')
+        except Exception as e:
+            logger.error(f"Error deleting email: {e}")
             flash(f"Erreur: {str(e)}", 'error')
         return redirect(url_for('email_management'))
 
