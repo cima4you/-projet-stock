@@ -384,7 +384,7 @@ def register_product_routes(app):
             q += ' ORDER BY p.name'
 
             products_data = query(q, tuple(params))
-            prod_columns = [row[0] for row in query('PRAGMA table_info(products)')]
+            prod_columns = [row[1] for row in query('PRAGMA table_info(products)')]
             columns = prod_columns + ['created_by_username']
 
             french_headers = {
