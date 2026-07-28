@@ -75,6 +75,18 @@
                             <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
                         </div>
 
+                        {% if workshops is defined %}
+                        <div class="col-md-2">
+                            <label for="workshop" class="form-label">{{ translations.workshop }}</label>
+                            <select class="form-select" id="workshop" name="workshop">
+                                <option value="">{{ translations.all_workshops }}</option>
+                                {% for ws in workshops %}
+                                <option value="{{ ws[0] }}" {% if filter_workshop == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
                         <!-- Search -->
                         <div class="col-md-2">
                             <label for="search" class="form-label">{{ translations.search_movements }}</label>

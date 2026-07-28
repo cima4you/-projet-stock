@@ -35,10 +35,22 @@ def register_product_routes(app):
             brand_filter = request.args.get('brand', '')
             date_from = request.args.get('date_from', '')
             date_to = request.args.get('date_to', '')
+            filter_workshop = request.args.get('workshop', '')
+            try:
+                fws = int(filter_workshop) if filter_workshop else None
+            except ValueError:
+                fws = None
 
             where = ' WHERE deleted_at IS NULL'
             params = []
-            ws_clause, ws_params = workshop_filter()
+            role = session.get('role')
+            if role in ('admin', 'principal_admin') and fws:
+                ws_clause = ' AND workshop_id = ?'
+                ws_params = [fws]
+            else:
+                ws_clause, ws_params = workshop_filter()
+                if role not in ('admin', 'principal_admin'):
+                    fws = None
             where += ws_clause
             params.extend(ws_params)
             if category_filter:
@@ -74,12 +86,12 @@ def register_product_routes(app):
             cursor.execute(q, params + [per_page, offset])
             products_list = cursor.fetchall()
 
-            ws_only, ws_only_params = workshop_filter()
-            cursor.execute('SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" AND deleted_at IS NULL' + ws_only, ws_only_params)
+            cursor.execute('SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != "" AND deleted_at IS NULL' + ws_clause, ws_params)
             categories = [row[0] for row in cursor.fetchall()]
 
         all_cats = query('SELECT name FROM categories ORDER BY name')
         all_supps = query('SELECT name FROM suppliers ORDER BY name')
+        workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
         expiring_soon_date = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
 
         return render_template('products.html', products=products_list, categories=categories,
@@ -90,6 +102,7 @@ def register_product_routes(app):
                              type_achat_filter=type_achat_filter, supplier_name_filter=supplier_name_filter,
                              storage_zone_filter=storage_zone_filter, brand_filter=brand_filter,
                              date_from=date_from, date_to=date_to,
+                             filter_workshop=fws, workshops=workshops,
                              page=page, total_pages=total_pages, total=total,
                              today=datetime.now().date().strftime('%Y-%m-%d'),
                              translations=TRANSLATIONS[session.get('lang', 'fr')],

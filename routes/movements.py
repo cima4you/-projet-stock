@@ -30,10 +30,22 @@ def register_movement_routes(app):
             chantier_filter = request.args.get('chantier', '')
             date_from = request.args.get('date_from', '')
             date_to = request.args.get('date_to', '')
+            filter_workshop = request.args.get('workshop', '')
+            try:
+                fws = int(filter_workshop) if filter_workshop else None
+            except ValueError:
+                fws = None
 
             where = ' WHERE 1=1'
             params = []
-            ws_clause, ws_params = workshop_filter('sm')
+            role = session.get('role')
+            if role in ('admin', 'principal_admin') and fws:
+                ws_clause = ' AND sm.workshop_id = ?'
+                ws_params = [fws]
+            else:
+                ws_clause, ws_params = workshop_filter('sm')
+                if role not in ('admin', 'principal_admin'):
+                    fws = None
             where += ws_clause
             params.extend(ws_params)
             if type_filter:
@@ -80,12 +92,14 @@ def register_movement_routes(app):
             cursor.execute(q, params + [per_page, offset])
             movements_list = cursor.fetchall()
 
+        workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
         return render_template('movements.html', movements=movements_list,
                              type_filter=type_filter, search_query=search_query,
                              supplier_name_filter=supplier_name_filter,
                              type_achat_filter=type_achat_filter,
                              chantier_filter=chantier_filter,
                              date_from=date_from, date_to=date_to,
+                             filter_workshop=fws, workshops=workshops,
                              page=page, total_pages=total_pages, total=total,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
