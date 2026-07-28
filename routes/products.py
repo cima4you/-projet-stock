@@ -367,6 +367,7 @@ def register_product_routes(app):
     @app.route('/export_products_excel')
     @login_required
     def export_products_excel():
+        print("DEBUG: export_products_excel called - NEW CODE v2")
         try:
             category_filter = request.args.get('category', '')
             search_query = request.args.get('search', '')
@@ -402,6 +403,7 @@ def register_product_routes(app):
                 'Qté Min', 'Atelier', 'Créé le', 'Mis à jour le',
                 'ID Créateur', 'Supprimé le', 'Image', 'Créé par',
             ]
+            print(f"DEBUG: headers={headers}")
 
             output = BytesIO()
             workbook = xlsxwriter.Workbook(output)
