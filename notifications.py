@@ -690,7 +690,7 @@ def _build_addition_html(lang: str, product_info: dict, type_label: str, user: s
 
 def _generate_products_report() -> BytesIO:
     rows = query('SELECT * FROM products WHERE deleted_at IS NULL ORDER BY name')
-    columns = [desc[0] for desc in query('PRAGMA table_info(products)')]
+    columns = [desc[1] for desc in query('PRAGMA table_info(products)')]
     french_headers = {
         'id': 'ID', 'code': 'Code Produit', 'name': 'Nom du Produit',
         'category': 'Catégorie', 'unit': 'Unité', 'quantity': 'Quantité',
@@ -699,7 +699,10 @@ def _generate_products_report() -> BytesIO:
         'supplier_name': 'Nom Fournisseur', 'bc_number': 'Numéro BC',
         'bl_number': 'Numéro BL', 'n_facture': 'Numéro Facture',
         'type_achat': "Type d'Achat", 'expiration_date': "Date d'Expiration",
-        'created_at': 'Créé le', 'updated_at': 'Mis à jour le'
+        'created_at': 'Créé le', 'updated_at': 'Mis à jour le',
+        'image_path': 'Image', 'min_quantity': 'Quantité Min',
+        'deleted_at': 'Supprimé le', 'workshop_id': 'Atelier',
+        'created_by': 'Créé par'
     }
     output = BytesIO()
     workbook = xlsxwriter.Workbook(output)
