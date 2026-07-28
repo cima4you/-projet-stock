@@ -16,6 +16,7 @@ def register_email_routes(app):
     def email_management():
         email_status = "Configuré" if EMAIL_ADDRESS else "Non configuré"
         workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
+        recipients = []
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -24,8 +25,7 @@ def register_email_routes(app):
                 LEFT JOIN workshops w ON nr.workshop_id = w.id
                 ORDER BY nr.name
             ''')
-            recipients = cursor.fetchall()
-            for r in recipients:
+            for r in cursor.fetchall():
                 cursor.execute('''
                     SELECT id, email, active, notify_achat_par_bc, notify_achat_par_caisse,
                            notify_achat_a_regulariser, notify_transfert, notify_product_deletion,
@@ -33,7 +33,7 @@ def register_email_routes(app):
                     FROM recipient_emails
                     WHERE recipient_id = ? ORDER BY email
                 ''', (r[0],))
-                r._emails = cursor.fetchall()
+                recipients.append({'id': r[0], 'name': r[1], 'active': r[2], 'workshop_id': r[3], 'workshop_name': r[4], 'emails': cursor.fetchall()})
         return render_template('email_management.html', email_status=email_status,
                              smtp_server=SMTP_SERVER, email_address=EMAIL_ADDRESS,
                              recipients=recipients, workshops=workshops,

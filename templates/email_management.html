@@ -98,18 +98,18 @@
                             <tbody>
                                 {% for recipient in recipients %}
                                 <tr>
-                                    <td rowspan="{{ recipient._emails|length + 1 }}" style="vertical-align: middle;">
-                                        <strong>{{ recipient[1] }}</strong>
+                                    <td rowspan="{{ recipient.emails|length + 1 }}" style="vertical-align: middle;">
+                                        <strong>{{ recipient.name }}</strong>
                                     </td>
                                 </tr>
-                                {% for email in recipient._emails %}
+                                {% for email in recipient.emails %}
                                 <tr>
                                     <td>
                                         <span class="small text-muted">{{ email[1] }}</span>
                                     </td>
                                     <td>
-                                        {% if recipient[3] %}
-                                            <span class="badge bg-info">{{ recipient[4] }}</span>
+                                        {% if recipient.workshop_id %}
+                                            <span class="badge bg-info">{{ recipient.workshop_name }}</span>
                                         {% else %}
                                             <span class="text-muted">{{ translations.all_workshops }}</span>
                                         {% endif %}
@@ -137,13 +137,13 @@
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRecipientModal{{ recipient[0] }}">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRecipientModal{{ recipient.id }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <a href="{{ url_for('delete_email', email_id=email[0]) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer cet email ?')">
                                                 <i class="fas fa-envelope-minus"></i>
                                             </a>
-                                            <a href="{{ url_for('delete_recipient', recipient_id=recipient[0]) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce destinataire et tous ses emails ?')">
+                                            <a href="{{ url_for('delete_recipient', recipient_id=recipient.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer ce destinataire et tous ses emails ?')">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
@@ -245,33 +245,33 @@
 
 <!-- Edit Recipient Modals -->
 {% for recipient in recipients %}
-<div class="modal fade" id="editRecipientModal{{ recipient[0] }}" tabindex="-1">
+<div class="modal fade" id="editRecipientModal{{ recipient.id }}" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">{{ translations.edit }}: {{ recipient[1] }}</h5>
+                <h5 class="modal-title">{{ translations.edit }}: {{ recipient.name }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('edit_recipient', recipient_id=recipient[0]) }}">
+            <form method="POST" action="{{ url_for('edit_recipient', recipient_id=recipient.id) }}">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="name{{ recipient[0] }}" class="form-label">{{ translations.recipient_name }} *</label>
-                        <input type="text" class="form-control" id="name{{ recipient[0] }}" name="name" value="{{ recipient[1] }}" required>
+                        <label for="name{{ recipient.id }}" class="form-label">{{ translations.recipient_name }} *</label>
+                        <input type="text" class="form-control" id="name{{ recipient.id }}" name="name" value="{{ recipient.name }}" required>
                     </div>
                     <div class="mb-3">
-                        <label for="workshop_id{{ recipient[0] }}" class="form-label">{{ translations.select_workshop }}</label>
-                        <select class="form-select" id="workshop_id{{ recipient[0] }}" name="workshop_id">
+                        <label for="workshop_id{{ recipient.id }}" class="form-label">{{ translations.select_workshop }}</label>
+                        <select class="form-select" id="workshop_id{{ recipient.id }}" name="workshop_id">
                             <option value="">{{ translations.all_workshops }}</option>
                             {% for ws in workshops %}
-                            <option value="{{ ws[0] }}" {% if recipient[3] and recipient[3] == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
+                            <option value="{{ ws[0] }}" {% if recipient.workshop_id and recipient.workshop_id == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Adresses email</label>
-                        <div id="edit_email_list_{{ recipient[0] }}">
-                            {% for email in recipient._emails %}
+                        <div id="edit_email_list_{{ recipient.id }}">
+                            {% for email in recipient.emails %}
                             <div class="card mb-2 email-card">
                                 <div class="card-body py-2">
                                     <input type="hidden" name="email_id[]" value="{{ email[0] }}">
@@ -314,7 +314,7 @@
                             </div>
                             {% endfor %}
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addEditEmailField('edit_email_list_{{ recipient[0] }}')">
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addEditEmailField('edit_email_list_{{ recipient.id }}')">
                             <i class="fas fa-plus me-1"></i> Ajouter un email
                         </button>
                     </div>
