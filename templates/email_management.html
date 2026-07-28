@@ -82,6 +82,26 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    {% if filter_workshop is defined %}
+                    <form method="GET" action="{{ url_for('email_management') }}" class="row g-3 mb-3">
+                        <div class="col-auto">
+                            <label for="filter_workshop" class="col-form-label"><strong>{{ translations.workshop }}:</strong></label>
+                        </div>
+                        <div class="col-auto">
+                            <select name="workshop_id" id="filter_workshop" class="form-select" onchange="this.form.submit()">
+                                <option value="">{{ translations.all_workshops }}</option>
+                                {% for ws in workshops %}
+                                <option value="{{ ws[0] }}" {% if filter_workshop == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if filter_workshop %}
+                        <div class="col-auto">
+                            <a href="{{ url_for('email_management') }}" class="btn btn-outline-secondary">{{ translations.reset }}</a>
+                        </div>
+                        {% endif %}
+                    </form>
+                    {% endif %}
                     {% if recipients %}
                     <div class="table-responsive">
                         <table class="table table-striped table-hover">

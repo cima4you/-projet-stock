@@ -16,15 +16,22 @@ def register_email_routes(app):
     def email_management():
         email_status = "Configuré" if EMAIL_ADDRESS else "Non configuré"
         workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
+        filter_ws = request.args.get('workshop_id', '')
+        try:
+            filter_val = int(filter_ws) if filter_ws else None
+        except ValueError:
+            filter_val = None
         recipients = []
+        ws_filter_sql = ' AND nr.workshop_id = ?' if filter_val else ''
+        ws_params = (filter_val,) if filter_val else ()
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT nr.id, nr.name, nr.active, nr.workshop_id, COALESCE(w.name, '') as workshop_name
                 FROM notification_recipients nr
-                LEFT JOIN workshops w ON nr.workshop_id = w.id
+                LEFT JOIN workshops w ON nr.workshop_id = w.id{ws_filter_sql}
                 ORDER BY nr.name
-            ''')
+            ''', ws_params)
             for r in cursor.fetchall():
                 cursor.execute('''
                     SELECT id, email, active, notify_achat_par_bc, notify_achat_par_caisse,
@@ -37,6 +44,7 @@ def register_email_routes(app):
         return render_template('email_management.html', email_status=email_status,
                              smtp_server=SMTP_SERVER, email_address=EMAIL_ADDRESS,
                              recipients=recipients, workshops=workshops,
+                             filter_workshop=filter_val,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
