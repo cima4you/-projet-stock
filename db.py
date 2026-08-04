@@ -136,7 +136,7 @@ def _get_raw_connection():
         return conn
     else:
         import sqlite3
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30)
         conn.row_factory = sqlite3.Row
         return conn
 

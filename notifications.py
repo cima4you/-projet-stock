@@ -180,7 +180,7 @@ def send_product_addition_notification(product_info: dict, movement_type: str, a
         def build_extra(lang, sep, fmt):
             parts = []
             for key, fr_label, ar_label in extra_fields:
-                val = product_info.get(key, '').strip()
+                val = str(product_info.get(key, '')).strip()
                 if val:
                     label = ar_label if lang == 'ar' else fr_label
                     parts.append(fmt(label, val))
@@ -284,7 +284,7 @@ def send_product_exit_notification(product_info: dict, movement_type: str, remov
         def build_extra_text(sep, fmt):
             parts = []
             for key, fr_label, ar_label in extra_fields:
-                val = product_info.get(key, '').strip()
+                val = str(product_info.get(key, '')).strip()
                 if val:
                     label = ar_label if lang == 'ar' else fr_label
                     parts.append(fmt(label, val))
