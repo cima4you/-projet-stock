@@ -223,10 +223,10 @@
                                             <a href="{{ url_for('product_history', product_id=product[0]) }}" class="btn btn-sm btn-outline-info" title="Historique">
                                                 <i class="fas fa-history"></i>
                                             </a>
+                                            {% if session.role in ['admin', 'principal_admin'] %}
                                             <a href="{{ url_for('edit_product', product_id=product[0]) }}" class="btn btn-sm btn-outline-primary" title="{{ translations.edit }}">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            {% if session.role in ['admin', 'principal_admin'] %}
                                             <a href="{{ url_for('delete_product', product_id=product[0]) }}" 
                                                class="btn btn-sm btn-outline-danger" 
                                                title="{{ translations.delete }}"

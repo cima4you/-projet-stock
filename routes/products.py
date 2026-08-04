@@ -183,7 +183,7 @@ def register_product_routes(app):
                              lang=session.get('lang', 'fr'))
 
     @app.route('/edit_product/<int:product_id>', methods=['GET', 'POST'])
-    @login_required
+    @admin_required
     def edit_product(product_id):
         with get_db() as conn:
             cursor = conn.cursor()
