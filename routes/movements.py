@@ -5,7 +5,7 @@ from io import BytesIO
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, session, flash, Response
 from db import get_db, query, query_one
-from utils import login_required, get_translation, excel_serial_to_datetime, log_audit, workshop_filter
+from utils import login_required, admin_required, get_translation, excel_serial_to_datetime, log_audit, workshop_filter
 from notifications import send_product_addition_notification, send_product_exit_notification
 from translations import TRANSLATIONS
 
@@ -242,6 +242,109 @@ def register_movement_routes(app):
         return render_template('add_movement.html', products=products_list,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
+
+    @app.route('/edit_movement/<int:movement_id>', methods=['GET', 'POST'])
+    @admin_required
+    def edit_movement(movement_id):
+        with get_db() as conn:
+            cursor = conn.cursor()
+            if request.method == 'POST':
+                try:
+                    movement_type = request.form['movement_type']
+                    quantity = int(request.form['quantity'])
+                    notes = request.form.get('notes', '').strip()
+                    supplier_name = request.form.get('supplier_name', '').strip()
+                    bc_number = request.form.get('bc_number', '').strip()
+                    bl_number = request.form.get('bl_number', '').strip()
+                    n_facture = request.form.get('n_facture', '').strip()
+                    type_achat = request.form.get('type_achat', '').strip()
+                    chantier_exp_recep = request.form.get('chantier_exp_recep', '').strip()
+                    nom_donneur_ordre = request.form.get('nom_donneur_ordre', '').strip()
+                    nom_magasinier = request.form.get('nom_magasinier', '').strip()
+                    nom_chauffeur = request.form.get('nom_chauffeur', '').strip()
+                    matricule = request.form.get('matricule', '').strip()
+
+                    cursor.execute('SELECT product_id, movement_type, quantity FROM stock_movements WHERE id = ?', (movement_id,))
+                    old = cursor.fetchone()
+                    if not old:
+                        flash("Mouvement introuvable", 'error')
+                        return redirect(url_for('movements'))
+                    old_type, old_qty = old['movement_type'], old['quantity']
+
+                    cursor.execute('SELECT quantity FROM products WHERE id = ?', (old['product_id'],))
+                    prod = cursor.fetchone()
+                    if not prod:
+                        flash("Produit introuvable", 'error')
+                        return redirect(url_for('movements'))
+
+                    contrib = lambda t, q: q if t == 'entry' else -q
+                    new_stock = prod['quantity'] + contrib(movement_type, quantity) - contrib(old_type, old_qty)
+                    if new_stock < 0:
+                        flash("Stock insuffisant : la correction ferait passer la quantité du produit en négatif", 'error')
+                        return redirect(url_for('edit_movement', movement_id=movement_id))
+
+                    cursor.execute('''
+                        UPDATE stock_movements SET movement_type=?, quantity=?, notes=?,
+                                                  supplier_name=?, bc_number=?, bl_number=?, n_facture=?,
+                                                  type_achat=?, chantier_exp_recep=?, nom_donneur_ordre=?,
+                                                  nom_magasinier=?, nom_chauffeur=?, matricule=?
+                        WHERE id=?
+                    ''', (movement_type, quantity, notes, supplier_name, bc_number, bl_number,
+                          n_facture, type_achat, chantier_exp_recep, nom_donneur_ordre,
+                          nom_magasinier, nom_chauffeur, matricule, movement_id))
+
+                    cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+                                  (new_stock, old['product_id']))
+                    log_audit('update', 'movement', movement_id,
+                              f"Correction du mouvement #{movement_id}: {old_type} {old_qty} -> {movement_type} {quantity}")
+                    flash("Mouvement corrigé avec succès", 'success')
+                    return redirect(url_for('movements'))
+                except Exception as e:
+                    logger.error(f"Error updating movement: {e}")
+                    flash(f"Erreur lors de la correction: {str(e)}", 'error')
+
+            cursor.execute('SELECT * FROM stock_movements WHERE id = ?', (movement_id,))
+            movement = cursor.fetchone()
+            if not movement:
+                flash("Mouvement introuvable", 'error')
+                return redirect(url_for('movements'))
+            cursor.execute('SELECT id, code, name FROM products WHERE id = ?', (movement['product_id'],))
+            product = cursor.fetchone()
+
+        return render_template('edit_movement.html', movement=movement, product=product,
+                             translations=TRANSLATIONS[session.get('lang', 'fr')],
+                             lang=session.get('lang', 'fr'))
+
+    @app.route('/delete_movement/<int:movement_id>')
+    @admin_required
+    def delete_movement(movement_id):
+        try:
+            with get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT product_id, movement_type, quantity FROM stock_movements WHERE id = ?', (movement_id,))
+                movement = cursor.fetchone()
+                if not movement:
+                    flash("Mouvement introuvable", 'error')
+                    return redirect(url_for('movements'))
+                cursor.execute('SELECT quantity FROM products WHERE id = ?', (movement['product_id'],))
+                prod = cursor.fetchone()
+                if not prod:
+                    flash("Produit introuvable", 'error')
+                    return redirect(url_for('movements'))
+                new_stock = prod['quantity'] + (movement['quantity'] if movement['movement_type'] == 'exit' else -movement['quantity'])
+                if new_stock < 0:
+                    flash("Suppression impossible : le stock du produit deviendrait négatif", 'error')
+                    return redirect(url_for('movements'))
+                cursor.execute('DELETE FROM stock_movements WHERE id = ?', (movement_id,))
+                cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+                              (new_stock, movement['product_id']))
+                log_audit('delete', 'movement', movement_id,
+                          f"Suppression du mouvement #{movement_id} ({movement['movement_type']} {movement['quantity']})")
+            flash("Mouvement supprimé avec succès", 'success')
+        except Exception as e:
+            logger.error(f"Error deleting movement: {e}")
+            flash(f"Erreur lors de la suppression: {str(e)}", 'error')
+        return redirect(url_for('movements'))
 
     @app.route('/movement_reports')
     @login_required

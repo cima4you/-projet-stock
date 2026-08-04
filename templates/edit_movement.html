@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}{{ translations.edit }} - {{ translations.stock_management_system }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="fas fa-edit me-2"></i>
+                    {{ translations.edit }} — تصحيح الحركة
+                </h1>
+                <a href="{{ url_for('movements') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>
+                    {{ translations.back }}
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST">
+                        <!-- Movement Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="card-title mb-3">
+                                    <i class="fas fa-exchange-alt me-2"></i>
+                                    Informations du mouvement
+                                </h5>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="product_id" class="form-label">{{ translations.select_product }} *</label>
+                                    <input type="text" class="form-control" value="{{ product[1] }} - {{ product[2] }} (ID: {{ movement['product_id'] }})" disabled>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="movement_type" class="form-label">{{ translations.movement_type }} *</label>
+                                    <select class="form-select" id="movement_type" name="movement_type" required>
+                                        <option value="entry" {% if movement['movement_type'] == 'entry' %}selected{% endif %}>{{ translations.entry }}</option>
+                                        <option value="exit" {% if movement['movement_type'] == 'exit' %}selected{% endif %}>{{ translations.exit }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="quantity" class="form-label">{{ translations.movement_quantity }} *</label>
+                                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="{{ movement['quantity'] }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="type_achat" class="form-label">{{ translations.type_achat }}</label>
+                                    <select class="form-select" id="type_achat" name="type_achat">
+                                        <option value="">{{ translations.select_purchase_type }}</option>
+                                        <option value="achat_par_bc" {% if movement['type_achat'] == 'achat_par_bc' %}selected{% endif %}>{{ translations.achat_par_bc }}</option>
+                                        <option value="achat_par_caisse" {% if movement['type_achat'] == 'achat_par_caisse' %}selected{% endif %}>{{ translations.achat_par_caisse }}</option>
+                                        <option value="achat_a_regulariser" {% if movement['type_achat'] == 'achat_a_regulariser' %}selected{% endif %}>{{ translations.achat_a_regulariser }}</option>
+                                        <option value="transfert" {% if movement['type_achat'] == 'transfert' %}selected{% endif %}>{{ translations.transfert }}</option>
+                                        <option value="consommation" {% if movement['type_achat'] == 'consommation' %}selected{% endif %}>Consommation interne</option>
+                                        <option value="perte" {% if movement['type_achat'] == 'perte' %}selected{% endif %}>{{ translations.perte }}</option>
+                                        <option value="vendu" {% if movement['type_achat'] == 'vendu' %}selected{% endif %}>{{ translations.vendu }}</option>
+                                        <option value="expire" {% if movement['type_achat'] == 'expire' %}selected{% endif %}>{{ translations.expire }}</option>
+                                     </select>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="notes" class="form-label">{{ translations.movement_note }}</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="3">{{ movement['notes'] or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Fields -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="card-title mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Informations supplémentaires
+                                </h5>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="chantier_exp_recep" class="form-label">Chantier / Expédition / Réception</label>
+                                    <input type="text" class="form-control" id="chantier_exp_recep" name="chantier_exp_recep" value="{{ movement['chantier_exp_recep'] or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nom_donneur_ordre" class="form-label">Nom du donneur d'ordre</label>
+                                    <input type="text" class="form-control" id="nom_donneur_ordre" name="nom_donneur_ordre" value="{{ movement['nom_donneur_ordre'] or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nom_magasinier" class="form-label">Nom du magasinier</label>
+                                    <input type="text" class="form-control" id="nom_magasinier" name="nom_magasinier" value="{{ movement['nom_magasinier'] or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nom_chauffeur" class="form-label">Nom du chauffeur</label>
+                                    <input type="text" class="form-control" id="nom_chauffeur" name="nom_chauffeur" value="{{ movement['nom_chauffeur'] or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="matricule" class="form-label">Matricule</label>
+                                    <input type="text" class="form-control" id="matricule" name="matricule" value="{{ movement['matricule'] or '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Supplier Information (visible for entries) -->
+                        <div class="row mb-4" id="supplier-section" {% if movement['movement_type'] == 'entry' %}style="display: block;"{% endif %}>
+                            <div class="col-12">
+                                <h5 class="card-title mb-3">
+                                    <i class="fas fa-truck me-2"></i>
+                                    {{ translations.supplier_information }}
+                                </h5>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="supplier_name" class="form-label">{{ translations.supplier_name }}</label>
+                                    <input type="text" class="form-control" id="supplier_name" name="supplier_name" value="{{ movement['supplier_name'] or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="bc_number" class="form-label">{{ translations.bc_number }}</label>
+                                    <input type="text" class="form-control" id="bc_number" name="bc_number" value="{{ movement['bc_number'] or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="bl_number" class="form-label">{{ translations.bl_number }}</label>
+                                    <input type="text" class="form-control" id="bl_number" name="bl_number" value="{{ movement['bl_number'] or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="n_facture" class="form-label">{{ translations.n_facture }}</label>
+                                    <input type="text" class="form-control" id="n_facture" name="n_facture" value="{{ movement['n_facture'] or '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('movements') }}" class="btn btn-secondary me-md-2">
+                                {{ translations.cancel }}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>
+                                {{ translations.edit }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const movementTypeSelect = document.getElementById('movement_type');
+    const supplierSection = document.getElementById('supplier-section');
+    movementTypeSelect.addEventListener('change', function() {
+        if (this.value === 'entry') {
+            supplierSection.style.display = 'block';
+        } else {
+            supplierSection.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

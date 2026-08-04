@@ -103,6 +103,7 @@ curl -s "https://bazighe82.pythonanywhere.com/cron/daily-report?token=RapportQuo
 | 6 | `ModuleNotFoundError: No module named 'flask_moment'` | environn. | Dépendance absente | `pip install flask_moment` | ✅ Historique |
 | 7 | `ImportError: cannot import name 'app' from 'flask_app'` | import | Chemin d'import erroné | Import corrigé | ✅ Historique |
 | 8 | **Nouvelle règle** : seul l'admin peut modifier/corriger un produit | `routes/products.py:186` + `templates/products.html:227` | Tout utilisateur connecté pouvait modifier (`@login_required`) | `@admin_required` sur `edit_product` + bouton modif caché aux non-admins | ✅ RÉSOLU 04-08-2026 (`e21ec64`) |
+| 9 | **Nouvelle règle** : édition + suppression de mouvement réservées aux admins (avec recalcul du stock) | `routes/movements.py` (`edit_movement`, `delete_movement`) + `templates/movements.html` + `templates/edit_movement.html` (nouveau) | Aucune édition/suppression de mouvement n'existait | Routes `@admin_required` + boutons admin-only + recalcul automatique de la quantité produit (gardes anti-stock négatif) | ✅ Ajouté 04-08-2026 |
 
 ---
 
@@ -140,4 +141,5 @@ Puis **Reload** (Web tab).
 - ✅ Données intactes : 20 produits, 57 mouvements.
 - ✅ Correctifs #1, #2, #3 poussés sur GitHub (`33fb540`) et appliqués sur le serveur.
 - ✅ Règle admin-only pour l'édition produit poussée sur GitHub (`e21ec64`) et appliquée sur le serveur (fast-forward → `git pull` OK 04-08-2026).
+- ✅ Règle admin-only pour l'édition/suppression des mouvements (avec recalcul du stock) ajoutée.
 - ⏳ À vérifier périodiquement : boîtes mail des destinataires (y compris Spam) après l'envoi quotidien.
