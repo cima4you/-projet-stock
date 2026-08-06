@@ -136,14 +136,14 @@ Puis **Reload** (Web tab).
 
 ---
 
-## 7. État actuel (04-08-2026)
+## 7. État actuel (06-08-2026)
 
-- ✅ Rapport quotidien : envoyé aux **5** destinataires, statut `sent` (vérifié).
+- ✅ Rapport quotidien : envoyé aux **6** destinataires, statut `sent` (vérifié).
 - ✅ Envoi automatique quotidien à **19:00** (cron-job.org, tz Casablanca) — seul déclencheur.
 - ✅ Anti-doublon actif : réponse `{"message":"Already sent today","status":"skipped"}`.
-- ✅ Données intactes : 20 produits, 57 mouvements.
 - ✅ Correctifs #1, #2, #3 poussés sur GitHub (`33fb540`) et appliqués sur le serveur.
-- ✅ Règle admin-only pour l'édition produit poussée sur GitHub (`e21ec64`) et appliquée sur le serveur (fast-forward → `git pull` OK 04-08-2026).
-- ✅ Règle admin-only pour l'édition/suppression des mouvements (avec recalcul du stock) ajoutée.
-- ✅ Journal de suivi : enregistrement des connexions/déconnexions (table `login_logs`) + `/audit_log` amélioré (filtres + pagination, admin-only) — à pousser sur GitHub et à appliquer sur le serveur.
+- ✅ Règle admin-only pour l'édition produit (`e21ec64`) et pour l'édition/suppression des mouvements (`7a354e3`) — appliquées sur le serveur.
+- ✅ Journal de suivi : enregistrement des connexions/déconnexions (table `login_logs`) + `/audit_log` admin-only avec filtres + pagination (`01914a3`) — appliqué sur le serveur.
+- ✅ Correctif `database is locked` (`4b12b10` + `02035d2`) : `log_audit` réutilise la connexion active + WAL + `log_audit` appelé après le commit dans `delete_product`. **Vérifié sur le serveur le 06-08-2026** : archivage + email de notification OK, entrée `delete product` présente dans `audit_log` (`FR00001 - FER TOR DIM 6`, par `admin`, 15:36:31), plus aucun `Failed to log audit` après le Reload.
+- ✅ Test réel effectué : suppression du produit **FER TOR DIM 6** (FR00001) → archivé + journalisé + notification email reçue.
 - ⏳ À vérifier périodiquement : boîtes mail des destinataires (y compris Spam) après l'envoi quotidien.
