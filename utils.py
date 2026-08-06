@@ -83,15 +83,31 @@ def get_translation(key: str) -> str:
 
 
 def log_audit(action: str, entity_type: str, entity_id: int, details: str, user_id: int = None):
-    from db import execute
+    from db import execute, active_connection
     if user_id is None:
         user_id = session.get('user_id')
     username = session.get('username', 'system')
+    sql = '''
+        INSERT INTO audit_log (action, entity_type, entity_id, details, user_id, username)
+        VALUES (?, ?, ?, ?, ?, ?)
+    '''
+    params = (action, entity_type, entity_id, details, user_id, username)
     try:
-        execute('''
-            INSERT INTO audit_log (action, entity_type, entity_id, details, user_id, username)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (action, entity_type, entity_id, details, user_id, username))
+        conn = active_connection()
+        if conn is not None:
+            cur = conn.cursor()
+            try:
+                cur.execute('SAVEPOINT audit_log_sp')
+                cur.execute(sql, params)
+                cur.execute('RELEASE SAVEPOINT audit_log_sp')
+            except Exception:
+                try:
+                    cur.execute('ROLLBACK TO SAVEPOINT audit_log_sp')
+                except Exception:
+                    pass
+                raise
+        else:
+            execute(sql, params)
     except Exception as e:
         logger.error(f"Failed to log audit: {e}")
 

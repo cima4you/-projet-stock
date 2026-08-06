@@ -256,8 +256,9 @@ def register_product_routes(app):
                     flash(get_translation('product_not_found'), 'error')
                     return redirect(url_for('products'))
                 product_info = {'id': product_id, 'code': product['code'], 'name': product['name']}
-                log_audit('delete', 'product', product_id, f"Archive du produit {product['code']} - {product['name']}")
                 cursor.execute('UPDATE products SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', (product_id,))
+
+            log_audit('delete', 'product', product_id, f"Archive du produit {product['code']} - {product['name']}")
 
             send_product_deletion_notification(product_info, deleted_by_user=session['username'],
                                                 lang=session.get('lang', 'fr'),

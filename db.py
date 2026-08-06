@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Optional, List, Tuple, Any
@@ -8,6 +9,8 @@ from werkzeug.security import generate_password_hash
 from config import DB_PATH, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_EMAIL, IS_POSTGRES, DATABASE_URL
 
 logger = logging.getLogger(__name__)
+
+_db_local = threading.local()
 
 
 class DatabaseError(Exception):
@@ -138,6 +141,11 @@ def _get_raw_connection():
         import sqlite3
         conn = sqlite3.connect(DB_PATH, timeout=30)
         conn.row_factory = sqlite3.Row
+        try:
+            conn.execute('PRAGMA busy_timeout = 30000')
+            conn.execute('PRAGMA journal_mode = WAL')
+        except Exception:
+            pass
         return conn
 
 
@@ -145,6 +153,7 @@ def _get_raw_connection():
 def get_db():
     conn = _get_raw_connection()
     wrapper = ConnectionWrapper(conn)
+    _db_local.active_conn = wrapper
     try:
         yield wrapper
         conn.commit()
@@ -153,7 +162,12 @@ def get_db():
         logger.error(f"Database error: {e}")
         raise DatabaseError(str(e))
     finally:
+        _db_local.active_conn = None
         conn.close()
+
+
+def active_connection():
+    return getattr(_db_local, 'active_conn', None)
 
 
 def init_database():
