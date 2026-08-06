@@ -48,12 +48,13 @@
 
 - **Définition** : `config.py:70` `DAILY_REPORT_RECIPIENTS` lu depuis la variable d'env `.env` (`DAILY_REPORT_RECIPIENTS`, séparée par virgules).
 - **IMPORTANT** : `config.py` est chargé **une seule fois au démarrage**. Après modification de `.env` → **Reload** obligatoire.
-- **Liste actuelle (5)** :
+- **Liste actuelle (6)** :
   1. bazigherachid@gmail.com
   2. rbazighe@gmail.com
   3. hmiddouchhamza@gmail.com
   4. younesghazzali1995@gmail.com
   5. mohammed.chabli@engor.net
+  6. yassinenaitoufqir@gmail.com
 
 ---
 
@@ -104,6 +105,7 @@ curl -s "https://bazighe82.pythonanywhere.com/cron/daily-report?token=RapportQuo
 | 7 | `ImportError: cannot import name 'app' from 'flask_app'` | import | Chemin d'import erroné | Import corrigé | ✅ Historique |
 | 8 | **Nouvelle règle** : seul l'admin peut modifier/corriger un produit | `routes/products.py:186` + `templates/products.html:227` | Tout utilisateur connecté pouvait modifier (`@login_required`) | `@admin_required` sur `edit_product` + bouton modif caché aux non-admins | ✅ RÉSOLU 04-08-2026 (`e21ec64`) |
 | 9 | **Nouvelle règle** : édition + suppression de mouvement réservées aux admins (avec recalcul du stock) | `routes/movements.py` (`edit_movement`, `delete_movement`) + `templates/movements.html` + `templates/edit_movement.html` (nouveau) | Aucune édition/suppression de mouvement n'existait | Routes `@admin_required` + boutons admin-only + recalcul automatique de la quantité produit (gardes anti-stock négatif) | ✅ Ajouté 04-08-2026 |
+| 10 | **Nouvelle fonctionnalité** : journal de suivi complet (entrées/sorties + qui a fait quoi) | `routes/auth.py` (login/login_failed/logout), `db.py` (table `login_logs`), `routes/reports.py` (`/audit_log` admin-only + filtres), `templates/audit_log.html` (réécrit : 2 tableaux + pagination + filtres) | Seul `audit_log` existait (create/update/delete), sans enregistrement des connexions | Nouvelle table `login_logs` (user_id, username, action, ip_address, created_at) + `log_audit()` déjà utilisée pour les modifications | ✅ Ajouté 06-08-2026 |
 
 ---
 
@@ -142,4 +144,5 @@ Puis **Reload** (Web tab).
 - ✅ Correctifs #1, #2, #3 poussés sur GitHub (`33fb540`) et appliqués sur le serveur.
 - ✅ Règle admin-only pour l'édition produit poussée sur GitHub (`e21ec64`) et appliquée sur le serveur (fast-forward → `git pull` OK 04-08-2026).
 - ✅ Règle admin-only pour l'édition/suppression des mouvements (avec recalcul du stock) ajoutée.
+- ✅ Journal de suivi : enregistrement des connexions/déconnexions (table `login_logs`) + `/audit_log` amélioré (filtres + pagination, admin-only) — à pousser sur GitHub et à appliquer sur le serveur.
 - ⏳ À vérifier périodiquement : boîtes mail des destinataires (y compris Spam) après l'envoi quotidien.

@@ -1,12 +1,15 @@
 import secrets
 import time
+import logging
 from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, session, flash
 from werkzeug.security import check_password_hash, generate_password_hash
-from db import get_db, query_one
+from db import get_db, query_one, execute
 from utils import get_translation
 from notifications import send_password_reset_email
 from translations import TRANSLATIONS
+
+logger = logging.getLogger(__name__)
 
 
 def register_auth_routes(app):
@@ -45,9 +48,13 @@ def register_auth_routes(app):
                         ws = query_one('SELECT name FROM workshops WHERE id = ?', (session['workshop_id'],))
                         session['workshop_name'] = ws['name'] if ws else None
                     cursor.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (user['id'],))
+                    cursor.execute('INSERT INTO login_logs (user_id, username, action, ip_address) VALUES (?, ?, ?, ?)',
+                                   (user['id'], username, 'login', ip))
                     flash(get_translation('login_successful'), 'success')
                     return redirect(url_for('dashboard'))
                 else:
+                    cursor.execute('INSERT INTO login_logs (user_id, username, action, ip_address) VALUES (?, ?, ?, ?)',
+                                   (user['id'] if user else None, username, 'login_failed', ip))
                     attempts = session.get('login_attempts', [])
                     attempts.append(time.time())
                     session['login_attempts'] = attempts
@@ -58,6 +65,14 @@ def register_auth_routes(app):
 
     @app.route('/logout')
     def logout():
+        user_id = session.get('user_id')
+        username = session.get('username', 'system')
+        ip = request.remote_addr or 'unknown'
+        try:
+            execute('INSERT INTO login_logs (user_id, username, action, ip_address) VALUES (?, ?, ?, ?)',
+                    (user_id, username, 'logout', ip))
+        except Exception as e:
+            logger.error(f"Failed to log logout: {e}")
         session.clear()
         flash(get_translation('logged_out_successfully'), 'success')
         return redirect(url_for('login'))

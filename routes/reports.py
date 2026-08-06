@@ -3,7 +3,7 @@ import logging
 from io import BytesIO
 from datetime import datetime
 from flask import render_template, session, request, Response, redirect, url_for, flash
-from utils import login_required, get_translation, log_audit, workshop_filter
+from utils import login_required, admin_required, get_translation, log_audit, workshop_filter
 from translations import TRANSLATIONS
 from db import get_db, query, query_one
 from config import LOGO_FOLDER
@@ -21,16 +21,61 @@ def register_report_routes(app):
                              lang=session.get('lang', 'fr'))
 
     @app.route('/audit_log')
-    @login_required
+    @admin_required
     def audit_log():
-        page = request.args.get('page', 1, type=int)
         per_page = 50
+
+        username_filter = request.args.get('username', '').strip()
+        action_filter = request.args.get('action', '').strip()
+        date_from = request.args.get('date_from', '').strip()
+        date_to = request.args.get('date_to', '').strip()
+        laction = request.args.get('laction', '').strip()
+
+        def filters(table):
+            where = ' WHERE 1=1'
+            params = []
+            if username_filter:
+                where += f' AND {table}.username LIKE ?'
+                params.append(f'%{username_filter}%')
+            if date_from:
+                where += f' AND DATE({table}.created_at) >= ?'
+                params.append(date_from)
+            if date_to:
+                where += f' AND DATE({table}.created_at) <= ?'
+                params.append(date_to)
+            return where, params
+
+        # Modifications (audit_log)
+        page = request.args.get('page', 1, type=int)
         offset = (page - 1) * per_page
-        total = query_one('SELECT COUNT(*) as cnt FROM audit_log')
+        where, params = filters('al')
+        if action_filter:
+            where += ' AND al.action = ?'
+            params.append(action_filter)
+        total = query_one('SELECT COUNT(*) as cnt FROM audit_log al' + where, tuple(params))
         total = total['cnt'] if total else 0
-        logs = query('SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ? OFFSET ?', (per_page, offset))
+        logs = query('SELECT al.* FROM audit_log al' + where + ' ORDER BY al.created_at DESC LIMIT ? OFFSET ?',
+                     tuple(params + [per_page, offset]))
         total_pages = max(1, (total + per_page - 1) // per_page)
-        return render_template('audit_log.html', logs=logs, page=page, total_pages=total_pages,
+
+        # Connexions / déconnexions (login_logs)
+        lpage = request.args.get('lpage', 1, type=int)
+        loffset = (lpage - 1) * per_page
+        lwhere, lparams = filters('ll')
+        if laction:
+            lwhere += ' AND ll.action = ?'
+            lparams.append(laction)
+        ltotal = query_one('SELECT COUNT(*) as cnt FROM login_logs ll' + lwhere, tuple(lparams))
+        ltotal = ltotal['cnt'] if ltotal else 0
+        login_logs = query('SELECT ll.* FROM login_logs ll' + lwhere + ' ORDER BY ll.created_at DESC LIMIT ? OFFSET ?',
+                           tuple(lparams + [per_page, loffset]))
+        ltotal_pages = max(1, (ltotal + per_page - 1) // per_page)
+
+        return render_template('audit_log.html', logs=logs, login_logs=login_logs,
+                             page=page, total_pages=total_pages,
+                             lpage=lpage, ltotal_pages=ltotal_pages,
+                             username_filter=username_filter, action_filter=action_filter,
+                             date_from=date_from, date_to=date_to, laction=laction,
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
