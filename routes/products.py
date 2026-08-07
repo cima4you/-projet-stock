@@ -183,12 +183,25 @@ def register_product_routes(app):
                              lang=session.get('lang', 'fr'))
 
     @app.route('/edit_product/<int:product_id>', methods=['GET', 'POST'])
-    @admin_required
+    @login_required
     def edit_product(product_id):
+        role = session.get('role')
+        is_admin = role in ('admin', 'principal_admin')
         with get_db() as conn:
             cursor = conn.cursor()
             if request.method == 'POST':
                 try:
+                    cursor.execute('SELECT * FROM products WHERE id = ?', (product_id,))
+                    product = cursor.fetchone()
+                    if not product:
+                        flash(get_translation('product_not_found'), 'error')
+                        return redirect(url_for('products'))
+                    if not is_admin:
+                        ws = session.get('workshop_id')
+                        if product['workshop_id'] is not None and ws is not None and product['workshop_id'] != ws:
+                            flash(get_translation('access_denied'), 'error')
+                            return redirect(url_for('products'))
+
                     code = request.form['code'].strip()
                     name = request.form['name'].strip()
                     category = request.form.get('category', '').strip()
@@ -205,6 +218,10 @@ def register_product_routes(app):
                     type_achat = request.form.get('type_achat', '').strip()
                     expiration_date = request.form.get('expiration_date', None) or None
                     min_quantity = int(request.form.get('min_quantity', 0))
+
+                    if not is_admin:
+                        code = product['code']
+                        name = product['name']
 
                     ws_id = session.get('workshop_id')
                     cursor.execute('SELECT id FROM products WHERE code = ? AND id != ? AND (workshop_id = ? OR (workshop_id IS NULL AND ? IS NULL))',
@@ -235,6 +252,11 @@ def register_product_routes(app):
             if not product:
                 flash(get_translation('product_not_found'), 'error')
                 return redirect(url_for('products'))
+            if not is_admin:
+                ws = session.get('workshop_id')
+                if product['workshop_id'] is not None and ws is not None and product['workshop_id'] != ws:
+                    flash(get_translation('access_denied'), 'error')
+                    return redirect(url_for('products'))
 
         all_cats = query('SELECT name FROM categories ORDER BY name')
         all_supps = query('SELECT name FROM suppliers ORDER BY name')
