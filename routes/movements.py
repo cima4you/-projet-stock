@@ -5,7 +5,7 @@ from io import BytesIO
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, session, flash, Response
 from db import get_db, query, query_one
-from utils import login_required, admin_required, get_translation, excel_serial_to_datetime, log_audit, workshop_filter
+from utils import login_required, admin_required, get_translation, excel_serial_to_datetime, log_audit, workshop_filter, build_change_details
 from notifications import send_product_addition_notification, send_product_exit_notification
 from translations import TRANSLATIONS
 
@@ -264,7 +264,7 @@ def register_movement_routes(app):
                     nom_chauffeur = request.form.get('nom_chauffeur', '').strip()
                     matricule = request.form.get('matricule', '').strip()
 
-                    cursor.execute('SELECT product_id, movement_type, quantity FROM stock_movements WHERE id = ?', (movement_id,))
+                    cursor.execute('SELECT * FROM stock_movements WHERE id = ?', (movement_id,))
                     old = cursor.fetchone()
                     if not old:
                         flash("Mouvement introuvable", 'error')
@@ -295,8 +295,41 @@ def register_movement_routes(app):
 
                     cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
                                   (new_stock, old['product_id']))
-                    log_audit('update', 'movement', movement_id,
-                              f"Correction du mouvement #{movement_id}: {old_type} {old_qty} -> {movement_type} {quantity}")
+
+                    old_values = {k: old[k] for k in old.keys()}
+                    new_values = {
+                        'movement_type': movement_type,
+                        'quantity': quantity,
+                        'notes': notes,
+                        'supplier_name': supplier_name,
+                        'bc_number': bc_number,
+                        'bl_number': bl_number,
+                        'n_facture': n_facture,
+                        'type_achat': type_achat,
+                        'chantier_exp_recep': chantier_exp_recep,
+                        'nom_donneur_ordre': nom_donneur_ordre,
+                        'nom_magasinier': nom_magasinier,
+                        'nom_chauffeur': nom_chauffeur,
+                        'matricule': matricule,
+                    }
+                    labels = {
+                        'movement_type': 'Type',
+                        'quantity': 'Quantité',
+                        'notes': 'Notes',
+                        'supplier_name': 'Fournisseur',
+                        'bc_number': 'N° BC',
+                        'bl_number': 'N° BL',
+                        'n_facture': 'N° Facture',
+                        'type_achat': "Type d'achat",
+                        'chantier_exp_recep': 'Chantier',
+                        'nom_donneur_ordre': "Donneur d'ordre",
+                        'nom_magasinier': 'Magasinier',
+                        'nom_chauffeur': 'Chauffeur',
+                        'matricule': 'Matricule',
+                    }
+                    details = build_change_details(f"Correction du mouvement #{movement_id}",
+                                                   old_values, new_values, labels)
+                    log_audit('update', 'movement', movement_id, details)
                     flash("Mouvement corrigé avec succès", 'success')
                     return redirect(url_for('movements'))
                 except Exception as e:

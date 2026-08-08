@@ -112,6 +112,40 @@ def log_audit(action: str, entity_type: str, entity_id: int, details: str, user_
         logger.error(f"Failed to log audit: {e}")
 
 
+def build_change_details(summary: str, old_values: dict, new_values: dict, labels: dict) -> str:
+    """Diff old vs new values and return a JSON string for the audit log details.
+    Only fields whose value changed are included."""
+    import json
+    changes = []
+    for field, label in labels.items():
+        ov = old_values.get(field)
+        nv = new_values.get(field)
+        if ov is None:
+            ov = ''
+        if nv is None:
+            nv = ''
+        if str(ov).strip() != str(nv).strip():
+            changes.append({'field': field, 'label': label,
+                            'old': str(ov), 'new': str(nv)})
+    if not changes:
+        return summary
+    return json.dumps({'summary': summary, 'changes': changes}, ensure_ascii=False)
+
+
+def parse_change_details(details: Optional[str]) -> Optional[dict]:
+    """Parse audit log details into {summary, changes} if it is JSON, else None."""
+    if not details:
+        return None
+    try:
+        import json
+        data = json.loads(details)
+        if isinstance(data, dict) and 'changes' in data:
+            return data
+    except Exception:
+        pass
+    return None
+
+
 def workshop_filter(table_alias: str = None) -> tuple:
     """Returns (where_clause, params) for workshop scoping.
     Admins see ALL workshops. Regular users see only their assigned workshop."""

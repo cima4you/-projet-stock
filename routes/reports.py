@@ -3,7 +3,7 @@ import logging
 from io import BytesIO
 from datetime import datetime
 from flask import render_template, session, request, Response, redirect, url_for, flash
-from utils import login_required, admin_required, get_translation, log_audit, workshop_filter
+from utils import login_required, admin_required, get_translation, log_audit, workshop_filter, parse_change_details
 from translations import TRANSLATIONS
 from db import get_db, query, query_one
 from config import LOGO_FOLDER
@@ -57,6 +57,16 @@ def register_report_routes(app):
         logs = query('SELECT al.* FROM audit_log al' + where + ' ORDER BY al.created_at DESC LIMIT ? OFFSET ?',
                      tuple(params + [per_page, offset]))
         total_pages = max(1, (total + per_page - 1) // per_page)
+
+        logs = [dict(log) for log in logs]
+        for log in logs:
+            parsed = parse_change_details(log.get('details'))
+            if parsed:
+                log['changes'] = parsed.get('changes', [])
+                log['summary'] = parsed.get('summary', log.get('details', ''))
+                log['has_changes'] = True
+            else:
+                log['has_changes'] = False
 
         # Connexions / déconnexions (login_logs)
         lpage = request.args.get('lpage', 1, type=int)

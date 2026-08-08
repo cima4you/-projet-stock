@@ -160,7 +160,33 @@
                                     </td>
                                     <td>{{ log.entity_type }}</td>
                                     <td>{{ log.entity_id or '-' }}</td>
-                                    <td><small>{{ log.details or '-' }}</small></td>
+                                    <td>
+                                        {% if log.has_changes %}
+                                        <div class="mb-1"><strong>{{ log.summary }}</strong></div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered mb-0" style="min-width: 420px;">
+                                                <thead class="table-secondary">
+                                                    <tr>
+                                                        <th>الحقل / Champ</th>
+                                                        <th>قبل / Avant</th>
+                                                        <th>بعد / Après</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for ch in log.changes %}
+                                                    <tr>
+                                                        <td><strong>{{ ch.label }}</strong></td>
+                                                        <td class="text-danger">{{ ch.old or '—' }}</td>
+                                                        <td class="text-success">{{ ch.new or '—' }}</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {% else %}
+                                        <small>{{ log.details or '-' }}</small>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ log.username or '-' }}</td>
                                     <td>{{ log.created_at[:19] if log.created_at else '-' }}</td>
                                 </tr>

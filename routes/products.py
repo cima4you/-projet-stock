@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, session, flash, Response
 from werkzeug.utils import secure_filename
 from db import get_db, query, query_one, execute
-from utils import login_required, admin_required, allowed_excel_file, get_translation, log_audit, workshop_filter
+from utils import login_required, admin_required, allowed_excel_file, get_translation, log_audit, workshop_filter, build_change_details
 from notifications import send_product_deletion_notification, send_product_addition_notification
 from translations import TRANSLATIONS
 from config import UPLOAD_FOLDER
@@ -240,7 +240,28 @@ def register_product_routes(app):
                     ''', (code, name, category, unit, brand, condition_status, chanter, storage_zone,
                           notes, supplier_name, bc_number, bl_number, n_facture, type_achat,
                           expiration_date, min_quantity, product_id))
-                    log_audit('update', 'product', product_id, f"Mise à jour du produit {code} - {name}")
+                    new_values = {
+                        'code': code, 'name': name, 'category': category, 'unit': unit,
+                        'brand': brand, 'condition_status': condition_status,
+                        'chanter': chanter, 'storage_zone': storage_zone, 'notes': notes,
+                        'supplier_name': supplier_name, 'bc_number': bc_number,
+                        'bl_number': bl_number, 'n_facture': n_facture,
+                        'type_achat': type_achat, 'expiration_date': expiration_date,
+                        'min_quantity': min_quantity,
+                    }
+                    labels = {
+                        'code': 'Code', 'name': 'Nom', 'category': 'Catégorie', 'unit': 'Unité',
+                        'brand': 'Marque', 'condition_status': 'État', 'chanter': 'Chantier',
+                        'storage_zone': 'Zone stockage', 'notes': 'Notes',
+                        'supplier_name': 'Fournisseur', 'bc_number': 'N° BC',
+                        'bl_number': 'N° BL', 'n_facture': 'N° Facture',
+                        'type_achat': "Type d'achat", 'expiration_date': 'Date expiration',
+                        'min_quantity': 'Qté min',
+                    }
+                    details = build_change_details(f"Mise à jour du produit {code} - {name}",
+                                                   {k: product[k] for k in product.keys()},
+                                                   new_values, labels)
+                    log_audit('update', 'product', product_id, details)
                     flash(get_translation('product_updated_successfully'), 'success')
                     return redirect(url_for('products'))
                 except Exception as e:
