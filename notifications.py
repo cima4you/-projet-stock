@@ -469,7 +469,7 @@ def _generate_products_pdf() -> BytesIO:
 def _generate_movements_pdf() -> BytesIO:
     from fpdf import FPDF
     rows = query('''
-        SELECT sm.created_at, sm.movement_type, p.code, p.name, sm.quantity,
+        SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
                u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
                sm.n_facture, sm.type_achat, sm.chantier_exp_recep,
                sm.nom_donneur_ordre, sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
@@ -486,10 +486,10 @@ def _generate_movements_pdf() -> BytesIO:
     pdf.set_font('Helvetica', '', 9)
     pdf.cell(0, 6, f"Genere le {datetime.now().strftime('%Y-%m-%d %H:%M')}", new_x="LMARGIN", new_y="NEXT", align='C')
     pdf.ln(5)
-    cols = ['Date', 'Type', 'Code Produit', 'Nom Produit', 'Qté', 'Utilisateur',
+    cols = ['Date', 'Type', 'Code Produit', 'Nom Produit', 'Catégorie', 'Qté', 'Utilisateur',
             'Fournisseur', 'N° BC', 'N° BL', 'N° Facture', "Type d'Achat",
             'Chantier/Exp', "Donneur d'ordre", 'Magasinier', 'Chauffeur', 'Matricule']
-    widths = [20, 12, 22, 35, 10, 20, 22, 18, 18, 18, 18, 20, 20, 18, 18, 14]
+    widths = [18, 10, 20, 30, 16, 9, 16, 18, 15, 15, 15, 15, 18, 18, 16, 16, 11]
     pdf.set_font('Helvetica', 'B', 6)
     pdf.set_fill_color(78, 115, 223)
     pdf.set_text_color(255, 255, 255)
@@ -512,11 +512,11 @@ def _generate_movements_pdf() -> BytesIO:
             pdf.set_text_color(0, 0, 0)
         t = 'Entrée' if r[1] == 'entry' else 'Sortie'
         data = [
-            str(r[0])[:10], t, str(r[2])[:14], str(r[3])[:22], str(r[4]),
-            str(r[5])[:12], str(r[6] or '-')[:14], str(r[7] or '-')[:10],
-            str(r[8] or '-')[:10], str(r[9] or '-')[:10], str(r[10] or '-')[:12],
-            str(r[11] or '-')[:14], str(r[12] or '-')[:14], str(r[13] or '-')[:12],
-            str(r[14] or '-')[:12], str(r[15] or '-')[:10]
+            str(r[0])[:10], t, str(r[2])[:14], str(r[3])[:22], str(r[4] or '-')[:12], str(r[5]),
+            str(r[6])[:12], str(r[7] or '-')[:14], str(r[8] or '-')[:10],
+            str(r[9] or '-')[:10], str(r[10] or '-')[:10], str(r[11] or '-')[:12],
+            str(r[12] or '-')[:14], str(r[13] or '-')[:14], str(r[14] or '-')[:12],
+            str(r[15] or '-')[:12], str(r[16] or '-')[:10]
         ]
         if fill:
             pdf.set_fill_color(240, 240, 240)
@@ -724,7 +724,7 @@ def _generate_products_report() -> BytesIO:
 
 def _generate_movements_report() -> BytesIO:
     rows = query('''
-        SELECT sm.created_at, sm.movement_type, p.code, p.name, sm.quantity,
+        SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
                sm.notes, u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
                sm.n_facture, sm.type_achat, sm.chantier_exp_recep, sm.nom_donneur_ordre,
                sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
@@ -734,7 +734,7 @@ def _generate_movements_report() -> BytesIO:
         ORDER BY sm.created_at DESC
     ''')
     headers = [
-        'Date', 'Type de Mouvement', 'Code Produit', 'Nom du Produit', 'Quantité',
+        'Date', 'Type de Mouvement', 'Code Produit', 'Nom du Produit', 'Catégorie', 'Quantité',
         'Notes', 'Utilisateur', 'Nom Fournisseur', 'Numéro BC', 'Numéro BL',
         'Numéro Facture', "Type d'Achat", 'Chantier/Exp/Récep', "Donneur d'ordre",
         'Magasinier', 'Chauffeur', 'Matricule'
