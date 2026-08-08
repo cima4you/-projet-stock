@@ -27,6 +27,7 @@ def register_movement_routes(app):
             search_query = request.args.get('search', '')
             supplier_name_filter = request.args.get('supplier_name', '')
             type_achat_filter = request.args.get('type_achat', '')
+            category_filter = request.args.get('category', '')
             chantier_filter = request.args.get('chantier', '')
             date_from = request.args.get('date_from', '')
             date_to = request.args.get('date_to', '')
@@ -60,6 +61,9 @@ def register_movement_routes(app):
             if type_achat_filter:
                 where += ' AND sm.type_achat = ?'
                 params.append(type_achat_filter)
+            if category_filter:
+                where += ' AND p.category = ?'
+                params.append(category_filter)
             if chantier_filter:
                 where += ' AND sm.chantier_exp_recep LIKE ?'
                 params.append(f'%{chantier_filter}%')
@@ -92,11 +96,16 @@ def register_movement_routes(app):
             cursor.execute(q, params + [per_page, offset])
             movements_list = cursor.fetchall()
 
+            cursor.execute('SELECT DISTINCT p.category FROM products p WHERE p.category IS NOT NULL AND p.category != "" ORDER BY p.category')
+            categories = [row[0] for row in cursor.fetchall()]
+
         workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
         return render_template('movements.html', movements=movements_list,
+                             categories=categories,
                              type_filter=type_filter, search_query=search_query,
                              supplier_name_filter=supplier_name_filter,
                              type_achat_filter=type_achat_filter,
+                             category_filter=category_filter,
                              chantier_filter=chantier_filter,
                              date_from=date_from, date_to=date_to,
                              filter_workshop=fws, workshops=workshops,
