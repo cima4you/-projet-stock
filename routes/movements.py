@@ -81,8 +81,8 @@ def register_movement_routes(app):
 
             q = '''
                 SELECT sm.id, sm.movement_type, sm.quantity, sm.notes, sm.created_at,
-                       p.code, p.name, u.username, sm.supplier_name, sm.bc_number,
-                       sm.bl_number, sm.n_facture, sm.type_achat,
+                       p.code, p.name, p.category, u.username, sm.supplier_name,
+                       sm.bc_number, sm.bl_number, sm.n_facture, sm.type_achat,
                        sm.chantier_exp_recep, sm.nom_donneur_ordre, sm.nom_magasinier,
                        sm.nom_chauffeur, sm.matricule
                 FROM stock_movements sm
@@ -390,9 +390,9 @@ def register_movement_routes(app):
 
             q = '''
                 SELECT sm.id, sm.movement_type, sm.quantity, sm.notes, sm.created_at,
-                       p.code, p.name, u.username, sm.supplier_name, sm.type_achat,
-                       sm.chantier_exp_recep, sm.nom_donneur_ordre, sm.nom_magasinier,
-                       sm.nom_chauffeur, sm.matricule
+                       p.code, p.name, p.category, u.username, sm.supplier_name,
+                       sm.type_achat, sm.chantier_exp_recep, sm.nom_donneur_ordre,
+                       sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
                 FROM stock_movements sm
                 JOIN products p ON sm.product_id = p.id
                 JOIN users u ON sm.user_id = u.id
@@ -443,7 +443,7 @@ def register_movement_routes(app):
                 movement_type = request.args.get('movement_type', '')
 
                 q = '''
-                    SELECT sm.created_at, sm.movement_type, p.code, p.name, sm.quantity,
+                    SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
                            sm.notes, u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
                            sm.n_facture, sm.type_achat, sm.chantier_exp_recep, sm.nom_donneur_ordre,
                            sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
@@ -470,7 +470,7 @@ def register_movement_routes(app):
                 movements_data = cursor.fetchall()
 
             headers = [
-                'Date', 'Type de Mouvement', 'Code Produit', 'Nom du Produit', 'Quantité',
+                'Date', 'Type de Mouvement', 'Code Produit', 'Nom du Produit', 'Catégorie', 'Quantité',
                 'Notes', 'Utilisateur', 'Nom Fournisseur', 'Numéro BC', 'Numéro BL',
                 'Numéro Facture', "Type d'Achat", 'Chantier/Exp/Récep', "Donneur d'ordre",
                 'Magasinier', 'Chauffeur', 'Matricule'

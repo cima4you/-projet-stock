@@ -127,6 +127,7 @@
                                     <th>{{ translations.movement_type }}</th>
                                     <th>{{ translations.product_code }}</th>
                                     <th>{{ translations.product_name }}</th>
+                                    <th>Catégorie</th>
                                     <th>{{ translations.quantity }}</th>
                                     <th>{{ translations.user }}</th>
                                     <th>{{ translations.supplier_name }}</th>
@@ -162,40 +163,47 @@
                                     <td><strong>{{ movement[5] }}</strong></td>
                                     <td>{{ movement[6] }}</td>
                                     <td>
+                                        {% if movement[7] %}
+                                            <span class="badge bg-light text-dark border">{{ movement[7] }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         <span class="badge bg-info">{{ movement[2] }}</span>
                                     </td>
-                                    <td>{{ movement[7] }}</td>
-                                    <td>{{ movement[8] or '-' }}</td>
+                                    <td>{{ movement[8] }}</td>
+                                    <td>{{ movement[9] or '-' }}</td>
                                     <td>
-                                        {% if movement[12] %}
-                                            {% if movement[12] == 'achat_par_bc' %}
+                                        {% if movement[13] %}
+                                            {% if movement[13] == 'achat_par_bc' %}
                                                 <span class="badge bg-primary">{{ translations.achat_par_bc }}</span>
-                                            {% elif movement[12] == 'achat_par_caisse' %}
+                                            {% elif movement[13] == 'achat_par_caisse' %}
                                                 <span class="badge bg-warning text-dark">{{ translations.achat_par_caisse }}</span>
-                                            {% elif movement[12] == 'achat_a_regulariser' %}
+                                            {% elif movement[13] == 'achat_a_regulariser' %}
                                                 <span class="badge bg-info">{{ translations.achat_a_regulariser }}</span>
-                                            {% elif movement[12] == 'transfert' %}
+                                            {% elif movement[13] == 'transfert' %}
                                                 <span class="badge bg-secondary">{{ translations.transfert }}</span>
-                                            {% elif movement[12] == 'consommation' %}
+                                            {% elif movement[13] == 'consommation' %}
                                                 <span class="badge bg-dark">Consommation interne</span>
-                                            {% elif movement[12] == 'perte' %}
+                                            {% elif movement[13] == 'perte' %}
                                                 <span class="badge bg-danger">{{ translations.perte }}</span>
-                                            {% elif movement[12] == 'vendu' %}
+                                            {% elif movement[13] == 'vendu' %}
                                                 <span class="badge bg-success">{{ translations.vendu }}</span>
-                                            {% elif movement[12] == 'expire' %}
+                                            {% elif movement[13] == 'expire' %}
                                                 <span class="badge bg-secondary">{{ translations.expire }}</span>
                                             {% else %}
-                                                {{ movement[12] }}
+                                                {{ movement[13] }}
                                             {% endif %}
                                         {% else %}
                                             -
                                         {% endif %}
                                     </td>
-                                    <td>{{ movement[13] or '-' }}</td> <!-- chantier_exp_recep -->
-                                    <td>{{ movement[14] or '-' }}</td> <!-- nom_donneur_ordre -->
-                                    <td>{{ movement[15] or '-' }}</td> <!-- nom_magasinier -->
-                                    <td>{{ movement[16] or '-' }}</td> <!-- nom_chauffeur -->
-                                    <td>{{ movement[17] or '-' }}</td> <!-- matricule -->
+                                    <td>{{ movement[14] or '-' }}</td> <!-- chantier_exp_recep -->
+                                    <td>{{ movement[15] or '-' }}</td> <!-- nom_donneur_ordre -->
+                                    <td>{{ movement[16] or '-' }}</td> <!-- nom_magasinier -->
+                                    <td>{{ movement[17] or '-' }}</td> <!-- nom_chauffeur -->
+                                    <td>{{ movement[18] or '-' }}</td> <!-- matricule -->
                                     <td>
                                         {% if movement[3] %}
                                             <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ movement[3] }}">
