@@ -58,7 +58,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="quantity" class="form-label">{{ translations.movement_quantity }} *</label>
-                                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" required>
+                                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" step="any" required>
                                     <div class="form-text" id="stock-info" style="display: none;"></div>
                                 </div>
                             </div>
@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
     movementTypeSelect.addEventListener('change', function() {
         const selectedOption = productSelect.options[productSelect.selectedIndex];
         if (selectedOption.value && this.value === 'exit') {
-            const currentStock = parseInt(selectedOption.getAttribute('data-quantity'));
+            const currentStock = parseFloat(selectedOption.getAttribute('data-quantity'));
             quantityInput.setAttribute('max', currentStock);
         } else {
             quantityInput.removeAttribute('max');
@@ -228,8 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (movementTypeSelect.value === 'exit') {
             const selectedOption = productSelect.options[productSelect.selectedIndex];
             if (selectedOption.value) {
-                const currentStock = parseInt(selectedOption.getAttribute('data-quantity'));
-                const requestedQuantity = parseInt(this.value);
+                const currentStock = parseFloat(selectedOption.getAttribute('data-quantity'));
+                const requestedQuantity = parseFloat(this.value);
                 if (requestedQuantity > currentStock) {
                     this.setCustomValidity('{{ translations.insufficient_stock }}');
                 } else {

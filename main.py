@@ -38,6 +38,19 @@ def force_french():
     if session.get('lang') != 'fr':
         session['lang'] = 'fr'
 
+
+@app.template_filter('num')
+def format_number(value):
+    if value is None or value == '':
+        return ''
+    try:
+        f = float(value)
+        if f.is_integer():
+            return str(int(f))
+        return f'{f:g}'
+    except (TypeError, ValueError):
+        return str(value)
+
 from routes import register_blueprints
 register_blueprints(app)
 

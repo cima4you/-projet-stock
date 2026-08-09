@@ -5,7 +5,7 @@ from io import BytesIO
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, session, flash, Response
 from db import get_db, query, query_one
-from utils import login_required, admin_required, get_translation, excel_serial_to_datetime, log_audit, workshop_filter, build_change_details
+from utils import login_required, admin_required, get_translation, excel_serial_to_datetime, log_audit, workshop_filter, build_change_details, parse_quantity
 from notifications import send_product_addition_notification, send_product_exit_notification
 from translations import TRANSLATIONS
 
@@ -152,7 +152,7 @@ def register_movement_routes(app):
             date_str = m[2][:10] if m[2] else ''
             stock_labels.append(date_str)
             stock_data.append(running)
-        min_qty = product[18] or 0
+        min_qty = product['min_quantity'] or 0
 
         return render_template('product_history.html', product=product, movements=movements_list,
                              stock_labels=json.dumps(stock_labels),
@@ -168,7 +168,7 @@ def register_movement_routes(app):
             try:
                 product_id = int(request.form['product_id'])
                 movement_type = request.form['movement_type']
-                quantity = int(request.form['quantity'])
+                quantity = parse_quantity(request.form['quantity'])
                 notes = request.form.get('notes', '').strip()
                 supplier_name = request.form.get('supplier_name', '').strip()
                 bc_number = request.form.get('bc_number', '').strip()
@@ -260,7 +260,7 @@ def register_movement_routes(app):
             if request.method == 'POST':
                 try:
                     movement_type = request.form['movement_type']
-                    quantity = int(request.form['quantity'])
+                    quantity = parse_quantity(request.form['quantity'])
                     notes = request.form.get('notes', '').strip()
                     supplier_name = request.form.get('supplier_name', '').strip()
                     bc_number = request.form.get('bc_number', '').strip()

@@ -162,21 +162,21 @@
                                 </thead>
                             <tbody>
                                 {% for product in products %}
-                                {% set qty = product[5]|int %}
-                                {% set min_qty = product[18]|int if product[18] else 0 %}
+                                {% set qty = product['quantity'] if product['quantity'] is not none else 0 %}
+                                {% set min_qty = product['min_quantity'] if product['min_quantity'] else 0 %}
                                 {% set is_low_stock = min_qty > 0 and qty < min_qty %}
-                                {% set is_expired = product[16] and product[16] < today %}
-                                {% set is_expiring = product[16] and product[16] >= today and product[16] <= expiring_soon %}
+                                {% set is_expired = product['expiration_date'] and product['expiration_date'] < today %}
+                                {% set is_expiring = product['expiration_date'] and product['expiration_date'] >= today and product['expiration_date'] <= expiring_soon %}
                                 <tr class="{% if is_low_stock %}table-danger{% elif is_expired %}table-danger{% elif is_expiring %}table-warning opacity-75{% endif %}">
                                     <td><strong>{{ product[1] }}</strong></td>
                                     <td>{{ product[2] }}</td>
                                     <td>{{ product[3] or '-' }}</td>
                                     <td>
                                         <span class="badge {% if is_low_stock %}bg-danger{% elif qty <= 10 %}bg-warning{% else %}bg-success{% endif %}">
-                                            {{ qty }}
+                                            {{ qty|num }}
                                             {% if is_low_stock %}<i class="fas fa-exclamation-triangle ms-1"></i>{% endif %}
                                         </span>
-                                        {% if min_qty > 0 %}<br><small class="text-muted">Min: {{ min_qty }}</small>{% endif %}
+                                        {% if min_qty > 0 %}<br><small class="text-muted">Min: {{ min_qty|num }}</small>{% endif %}
                                     </td>
                                     <td>{{ product[4] or '-' }}</td>
                                     <td>{{ product[6] or '-' }}</td>

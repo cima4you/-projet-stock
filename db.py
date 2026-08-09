@@ -197,7 +197,7 @@ def init_database():
                 name TEXT NOT NULL,
                 category TEXT,
                 unit TEXT,
-                quantity INTEGER DEFAULT 0,
+                quantity REAL DEFAULT 0,
                 brand TEXT,
                 condition_status TEXT,
                 chanter TEXT,
@@ -209,7 +209,7 @@ def init_database():
                 n_facture TEXT,
                 type_achat TEXT,
                 expiration_date DATE,
-                min_quantity INTEGER DEFAULT 0,
+                min_quantity REAL DEFAULT 0,
                 deleted_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -223,7 +223,7 @@ def init_database():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 product_id INTEGER NOT NULL,
                 movement_type TEXT NOT NULL,
-                quantity INTEGER NOT NULL,
+                quantity REAL NOT NULL,
                 notes TEXT,
                 user_id INTEGER NOT NULL,
                 supplier_name TEXT,
@@ -332,9 +332,9 @@ def init_database():
             CREATE TABLE IF NOT EXISTS inventory_counts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 product_id INTEGER NOT NULL,
-                theoretical_qty INTEGER NOT NULL,
-                actual_qty INTEGER NOT NULL,
-                difference INTEGER NOT NULL,
+                theoretical_qty REAL NOT NULL,
+                actual_qty REAL NOT NULL,
+                difference REAL NOT NULL,
                 notes TEXT,
                 counted_by TEXT NOT NULL,
                 counted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -478,6 +478,26 @@ def _add_missing_columns(cursor):
                 if not isinstance(sys.exc_info()[1], sqlite3.OperationalError):
                     raise
     _rebuild_products_uniqueness(cursor)
+    _make_quantity_decimal(cursor)
+
+
+def _make_quantity_decimal(cursor):
+    """Allow decimal quantities by switching quantity columns to REAL.
+    SQLite's INTEGER affinity already stores REAL values, so no migration is needed there."""
+    if not IS_POSTGRES:
+        return
+    for sql in [
+        'ALTER TABLE products ALTER COLUMN quantity TYPE REAL',
+        'ALTER TABLE products ALTER COLUMN min_quantity TYPE REAL',
+        'ALTER TABLE stock_movements ALTER COLUMN quantity TYPE REAL',
+        'ALTER TABLE inventory_counts ALTER COLUMN theoretical_qty TYPE REAL',
+        'ALTER TABLE inventory_counts ALTER COLUMN actual_qty TYPE REAL',
+        'ALTER TABLE inventory_counts ALTER COLUMN difference TYPE REAL',
+    ]:
+        try:
+            cursor.execute(sql)
+        except Exception:
+            pass
 
 
 def _rebuild_products_uniqueness(cursor):
@@ -503,7 +523,7 @@ def _rebuild_products_uniqueness(cursor):
                 name TEXT NOT NULL,
                 category TEXT,
                 unit TEXT,
-                quantity INTEGER DEFAULT 0,
+                quantity REAL DEFAULT 0,
                 brand TEXT,
                 condition_status TEXT,
                 chanter TEXT,
@@ -518,7 +538,7 @@ def _rebuild_products_uniqueness(cursor):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 image_path TEXT,
-                min_quantity INTEGER DEFAULT 0,
+                min_quantity REAL DEFAULT 0,
                 deleted_at TIMESTAMP,
                 workshop_id INTEGER,
                 created_by INTEGER,

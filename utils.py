@@ -29,6 +29,15 @@ def allowed_logo_file(filename: str) -> bool:
     return allowed_file(filename, LOGO_EXTENSIONS)
 
 
+def parse_quantity(value, default=0):
+    """Parse a quantity allowing decimals. Whole numbers stay int for clean display."""
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return default
+    return int(f) if f.is_integer() else f
+
+
 def allowed_excel_file(filename: str) -> bool:
     return allowed_file(filename, {'xlsx', 'xls'})
 

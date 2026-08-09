@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, session, flash, Response
 from werkzeug.utils import secure_filename
 from db import get_db, query, query_one, execute
-from utils import login_required, admin_required, allowed_excel_file, get_translation, log_audit, workshop_filter, build_change_details
+from utils import login_required, admin_required, allowed_excel_file, get_translation, log_audit, workshop_filter, build_change_details, parse_quantity
 from notifications import send_product_deletion_notification, send_product_addition_notification
 from translations import TRANSLATIONS
 from config import UPLOAD_FOLDER
@@ -117,7 +117,7 @@ def register_product_routes(app):
                 name = request.form['name'].strip()
                 category = request.form.get('category', '').strip()
                 unit = request.form.get('unit', '').strip()
-                quantity = int(request.form.get('quantity', 0))
+                quantity = parse_quantity(request.form.get('quantity', 0))
                 brand = request.form.get('brand', '').strip()
                 condition_status = request.form.get('condition_status', '').strip()
                 chanter = request.form.get('chanter', '').strip()
@@ -129,7 +129,7 @@ def register_product_routes(app):
                 n_facture = request.form.get('n_facture', '').strip()
                 type_achat = request.form.get('type_achat', '').strip()
                 expiration_date = request.form.get('expiration_date', None) or None
-                min_quantity = int(request.form.get('min_quantity', 0))
+                min_quantity = parse_quantity(request.form.get('min_quantity', 0))
 
                 with get_db() as conn:
                     cursor = conn.cursor()
@@ -217,7 +217,7 @@ def register_product_routes(app):
                     n_facture = request.form.get('n_facture', '').strip()
                     type_achat = request.form.get('type_achat', '').strip()
                     expiration_date = request.form.get('expiration_date', None) or None
-                    min_quantity = int(request.form.get('min_quantity', 0))
+                    min_quantity = parse_quantity(request.form.get('min_quantity', 0))
 
                     if not is_admin:
                         code = product['code']
@@ -555,7 +555,7 @@ def _import_from_excel(file_path: str, user_id: int, workshop_id=None):
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     row['code'], row['name'], row.get('category', ''), row.get('unit', ''),
-                    int(row.get('quantity', 0)) if pd.notna(row.get('quantity', 0)) else 0,
+                    parse_quantity(row.get('quantity', 0)) if pd.notna(row.get('quantity', 0)) else 0,
                     row.get('brand', ''), row.get('condition_status', ''), row.get('chanter', ''),
                     row.get('storage_zone', ''), row.get('notes', ''), row.get('supplier_name', ''),
                     row.get('bc_number', ''), row.get('bl_number', ''), row.get('n_facture', ''),
@@ -563,7 +563,7 @@ def _import_from_excel(file_path: str, user_id: int, workshop_id=None):
                 ))
                 product_id = cursor.lastrowid
 
-                qty = int(row.get('quantity', 0)) if pd.notna(row.get('quantity', 0)) else 0
+                qty = parse_quantity(row.get('quantity', 0)) if pd.notna(row.get('quantity', 0)) else 0
                 if qty > 0:
                     cursor.execute('''
                         INSERT INTO stock_movements (product_id, movement_type, quantity, notes, user_id,

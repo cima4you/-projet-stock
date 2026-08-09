@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from db import get_db, query, query_one, execute
-from utils import login_required, admin_required, get_translation, log_audit, workshop_filter
+from utils import login_required, admin_required, get_translation, log_audit, workshop_filter, parse_quantity
 from translations import TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ def register_inventory_routes(app):
     @admin_required
     def inventory_count():
         product_id = int(request.form['product_id'])
-        actual_qty = int(request.form['actual_qty'])
+        actual_qty = parse_quantity(request.form['actual_qty'])
         notes = request.form.get('notes', '').strip()
         product = query_one('SELECT id, quantity, code, name FROM products WHERE id = ?', (product_id,))
         if not product:
@@ -44,7 +44,7 @@ def register_inventory_routes(app):
         execute('UPDATE products SET quantity = ? WHERE id = ?', (actual_qty, product_id))
         log_audit('inventory', 'product', product_id,
                   f"Inventaire: {product['code']} ({product['name']}) théorique={product['quantity']} réel={actual_qty} écart={diff}")
-        flash(f"Inventaire enregistré pour {product['code']} - {product['name']}. Écart: {diff:+d}", 'success')
+        flash(f"Inventaire enregistré pour {product['code']} - {product['name']}. Écart: {diff:+g}", 'success')
         return redirect(url_for('inventory'))
 
     @app.route('/api/product_info/<int:product_id>')
