@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Archivage automatique - {{ translations.stock_management_system }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="fas fa-archive me-2"></i>
+                    Archivage automatique des produits inactifs
+                </h1>
+                <a href="{{ url_for('archived_products') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-archive me-2"></i>Produits archivés
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Paramètres</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="months" class="form-label">Archiver les produits sans aucune mouvement (entrée/sortie) depuis :</label>
+                            <div class="input-group" style="max-width: 250px;">
+                                <input type="number" class="form-control" id="months" name="months" value="{{ months }}" min="1" required>
+                                <span class="input-group-text">mois</span>
+                            </div>
+                            <div class="form-text">
+                                L'archivage se fait automatiquement une fois par jour (job programmé). Un produit est
+                                considéré inactif si sa dernière mouvement ou mise à jour est antérieure au seuil choisi.
+                                Les produits archivés restent consultables et restaurables dans « Produits archivés ».
+                            </div>
+                        </div>
+                        <button type="submit" name="action" value="save" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Enregistrer le paramètre
+                        </button>
+                        <button type="submit" name="action" value="run" class="btn btn-warning ms-2"
+                                onclick="return confirm('Exécuter l\'archivage automatique maintenant ?');">
+                            <i class="fas fa-play me-1"></i>Archiver maintenant
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Fonctionnement</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li>La tâche automatisée s'exécute toutes les 24 heures.</li>
+                        <li>Elle archive les produits sans mouvement depuis <strong>{{ months }} mois</strong>.</li>
+                        <li>Chaque archivage est consigné dans le journal (Audit Log).</li>
+                        <li>Vous pouvez restaurer un produit archivé à tout moment.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

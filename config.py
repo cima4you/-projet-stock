@@ -73,3 +73,6 @@ DAILY_REPORT_RECIPIENTS = [
         'bazigherachid@gmail.com'
     ).split(',') if email.strip()
 ]
+
+# Auto-archive inactive products (no movement since X months)
+AUTO_ARCHIVE_INACTIVE_MONTHS = int(os.environ.get('AUTO_ARCHIVE_INACTIVE_MONTHS', '6'))

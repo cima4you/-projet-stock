@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord - {{ workshop[1] }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12 d-flex justify-content-between align-items-center">
+            <h2 class="text-primary">
+                <i class="fas fa-industry me-2"></i>{{ workshop[1] }}
+                {% if workshop[3] %}<small class="text-muted">({{ workshop[3] }})</small>{% endif %}
+            </h2>
+            <div>
+                <a href="{{ url_for('workshop_comparison') }}" class="btn btn-outline-info me-2">
+                    <i class="fas fa-chart-bar me-1"></i>Comparer les ateliers
+                </a>
+                <a href="{{ url_for('workshops') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Ateliers
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Produits</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ total_products }}</div>
+                        </div>
+                        <div class="col-auto"><i class="fas fa-boxes fa-2x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Stock faible (≤10)</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ low_stock_items }}</div>
+                        </div>
+                        <div class="col-auto"><i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Entrées ({{ total_entries }})</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ entries_qty }} unités</div>
+                        </div>
+                        <div class="col-auto"><i class="fas fa-arrow-down fa-2x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Sorties ({{ total_exits }})</div>
+                            <div class="h5 mb-0 font-weight-bold">{{ exits_qty }} unités</div>
+                        </div>
+                        <div class="col-auto"><i class="fas fa-arrow-up fa-2x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Mouvements (30 jours) - {{ workshop[1] }}</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="movementsChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Par Catégorie</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Produits en stock faible</h6>
+                </div>
+                <div class="card-body">
+                    {% if low_stock_products %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr><th>Code</th><th>Nom</th><th>Quantité</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for product in low_stock_products %}
+                                <tr>
+                                    <td>{{ product[0] }}</td>
+                                    <td>{{ product[1] }}</td>
+                                    <td><span class="text-danger font-weight-bold">{{ product[2] }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Aucun produit en stock faible.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Mouvements récents ({{ total_movements }} au total)</h6>
+                </div>
+                <div class="card-body">
+                    {% if recent_movements %}
+                    <ul class="list-group list-group-flush">
+                        {% for movement in recent_movements %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ movement[4] }}</strong>
+                                <br>
+                                <small class="text-muted">{{ moment(movement[3]).fromNow() }} | {{ movement[5] }}</small>
+                            </div>
+                            <span class="badge bg-{{ 'success' if movement[0] == 'entry' else 'danger' }} badge-pill">
+                                {{ movement[1] }} ({{ 'Entrée' if movement[0] == 'entry' else 'Sortie' }})
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">Aucun mouvement récent.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    new Chart(document.getElementById('movementsChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels | safe }},
+            datasets: [
+                { label: 'Entrées', data: {{ chart_entries | safe }}, backgroundColor: 'rgba(40, 167, 69, 0.7)', borderColor: 'rgba(40, 167, 69, 1)', borderWidth: 1 },
+                { label: 'Sorties', data: {{ chart_exits | safe }}, backgroundColor: 'rgba(220, 53, 69, 0.7)', borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1 }
+            ]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ cat_labels | safe }},
+            datasets: [{ data: {{ cat_counts | safe }}, backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#5a5c69', '#858796', '#b004b9', '#f72585', '#4cc9f0'] }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+</script>
+{% endblock %}

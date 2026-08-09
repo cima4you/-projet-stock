@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Comparaison des ateliers{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12 d-flex justify-content-between align-items-center">
+            <h2 class="text-primary"><i class="fas fa-chart-bar me-2"></i>Comparaison des ateliers</h2>
+            <a href="{{ url_for('workshops') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Ateliers
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Comparaison Produits / Stock / Mouvements</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="comparisonChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold">Détail par atelier</h6>
+                </div>
+                <div class="card-body">
+                    {% if stats %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Atelier</th>
+                                    <th>Ville</th>
+                                    <th>Produits</th>
+                                    <th>Stock total (unités)</th>
+                                    <th>Stock faible</th>
+                                    <th>Mouvements</th>
+                                    <th>Entrées (unités)</th>
+                                    <th>Sorties (unités)</th>
+                                    <th>Utilisateurs</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in stats %}
+                                <tr>
+                                    <td><strong>{{ s.name }}</strong></td>
+                                    <td>{{ s.city or '-' }}</td>
+                                    <td>{{ s.products }}</td>
+                                    <td>{{ s.total_qty }}</td>
+                                    <td>
+                                        {% if s.low_stock > 0 %}
+                                        <span class="badge bg-warning text-dark">{{ s.low_stock }}</span>
+                                        {% else %}
+                                        <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ s.movements }}</td>
+                                    <td class="text-success">{{ s.entries_qty }}</td>
+                                    <td class="text-danger">{{ s.exits_qty }}</td>
+                                    <td>{{ s.users }}</td>
+                                    <td>
+                                        <a href="{{ url_for('workshop_dashboard', workshop_id=s.id) }}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-chart-line me-1"></i>Tableau de bord
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Aucun atelier enregistré.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    new Chart(document.getElementById('comparisonChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels | safe }},
+            datasets: [
+                { label: 'Produits', data: {{ chart_products | safe }}, backgroundColor: 'rgba(78, 115, 223, 0.7)' },
+                { label: 'Mouvements', data: {{ chart_movements | safe }}, backgroundColor: 'rgba(28, 200, 138, 0.7)' },
+                { label: 'Stock total (unités)', data: {{ chart_stock | safe }}, backgroundColor: 'rgba(246, 194, 62, 0.7)' }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+</script>
+{% endblock %}

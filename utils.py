@@ -146,6 +146,48 @@ def parse_change_details(details: Optional[str]) -> Optional[dict]:
     return None
 
 
+def get_app_setting(key: str, default: str = None) -> str:
+    from db import query_one
+    row = query_one('SELECT value FROM app_settings WHERE key = ?', (key,))
+    return row['value'] if row and row['value'] is not None else default
+
+
+def set_app_setting(key: str, value: str):
+    from db import get_db
+    with get_db() as conn:
+        conn.cursor().execute('''
+            INSERT INTO app_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        ''', (key, str(value)))
+
+
+def auto_archive_inactive_products(months: int = None) -> list:
+    """Archive products with no movement (or no update) since `months` months ago.
+    Returns list of (code, name) tuples that were archived."""
+    from db import get_db, query_one
+    from config import AUTO_ARCHIVE_INACTIVE_MONTHS
+    if months is None:
+        months = int(get_app_setting('auto_archive_months', str(AUTO_ARCHIVE_INACTIVE_MONTHS)))
+    cutoff = (datetime.now() - timedelta(days=30 * months)).strftime('%Y-%m-%d %H:%M:%S')
+    archived = []
+    with get_db() as conn:
+        cursor = conn.cursor()
+        rows = cursor.execute('''
+            SELECT id, code, name FROM products p
+            WHERE deleted_at IS NULL
+              AND COALESCE(
+                    (SELECT MAX(sm.created_at) FROM stock_movements sm WHERE sm.product_id = p.id),
+                    p.updated_at
+                  ) < ?
+        ''', (cutoff,)).fetchall()
+        for r in rows:
+            cursor.execute('UPDATE products SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (r['id'],))
+            archived.append((r['code'], r['name']))
+    for code, name in archived:
+        log_audit('delete', 'product', None, f"Archivage auto (inactif): {code} - {name}")
+    return archived
+
+
 def workshop_filter(table_alias: str = None) -> tuple:
     """Returns (where_clause, params) for workshop scoping.
     Admins see ALL workshops. Regular users see only their assigned workshop."""

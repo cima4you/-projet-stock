@@ -63,6 +63,9 @@
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
+                                            <a href="{{ url_for('workshop_dashboard', workshop_id=ws[0]) }}" class="btn btn-sm btn-outline-info" title="Tableau de bord">
+                                                <i class="fas fa-chart-line"></i>
+                                            </a>
                                             <a href="{{ url_for('edit_workshop', workshop_id=ws[0]) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-edit"></i>
                                             </a>
