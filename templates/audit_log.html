@@ -9,8 +9,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h3">
                     <i class="fas fa-history me-2"></i>
-                    سجل التتبع / Journal de suivi
-                </h1>
+                    Journal de suivi                </h1>
             </div>
         </div>
     </div>
@@ -22,21 +21,21 @@
                 <div class="card-body">
                     <form method="GET" class="row g-2">
                         <div class="col-md-3">
-                            <label class="form-label">المستخدم / Utilisateur</label>
-                            <input type="text" class="form-control" name="username" value="{{ username_filter }}" placeholder="بحث بالاسم">
+                            <label class="form-label">Utilisateur</label>
+                            <input type="text" class="form-control" name="username" value="{{ username_filter }}" placeholder="Rechercher par nom">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">من تاريخ / Du</label>
+                            <label class="form-label">Du</label>
                             <input type="date" class="form-control" name="date_from" value="{{ date_from }}">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">إلى تاريخ / Au</label>
+                            <label class="form-label">Au</label>
                             <input type="date" class="form-control" name="date_to" value="{{ date_to }}">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">نوع التعديل</label>
+                            <label class="form-label">Type de modification</label>
                             <select class="form-select" name="action">
-                                <option value="">الكل</option>
+                                <option value="">Tous</option>
                                 <option value="create" {% if action_filter == 'create' %}selected{% endif %}>create</option>
                                 <option value="update" {% if action_filter == 'update' %}selected{% endif %}>update</option>
                                 <option value="delete" {% if action_filter == 'delete' %}selected{% endif %}>delete</option>
@@ -45,17 +44,17 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">الدخول/الخروج</label>
+                            <label class="form-label">Connexion/Déconnexion</label>
                             <select class="form-select" name="laction">
-                                <option value="">الكل</option>
+                                <option value="">Tous</option>
                                 <option value="login" {% if laction == 'login' %}selected{% endif %}>login</option>
                                 <option value="logout" {% if laction == 'logout' %}selected{% endif %}>logout</option>
                                 <option value="login_failed" {% if laction == 'login_failed' %}selected{% endif %}>login_failed</option>
                             </select>
                         </div>
                         <div class="col-12 text-end">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-1"></i>تصفية / Filtrer</button>
-                            <a href="{{ url_for('audit_log') }}" class="btn btn-outline-secondary">إعادة ضبط</a>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-1"></i>Filtrer</button>
+                            <a href="{{ url_for('audit_log') }}" class="btn btn-outline-secondary">Réinitialiser</a>
                         </div>
                     </form>
                 </div>
@@ -68,7 +67,7 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i>سجل الدخول والخروج / Connexions</h5>
+                    <h5 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i>Connexions</h5>
                 </div>
                 <div class="card-body">
                     {% if login_logs %}
@@ -77,10 +76,10 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>ID</th>
-                                    <th>المستخدم</th>
-                                    <th>الحالة</th>
-                                    <th>عنوان IP</th>
-                                    <th>التاريخ والوقت</th>
+                                    <th>Utilisateur</th>
+                                    <th>Statut</th>
+                                    <th>Adresse IP</th>
+                                    <th>Date et heure</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -90,11 +89,11 @@
                                     <td><strong>{{ log.username or '-' }}</strong></td>
                                     <td>
                                         {% if log.action == 'login' %}
-                                            <span class="badge bg-success">دخول / Login</span>
+                                            <span class="badge bg-success">Login</span>
                                         {% elif log.action == 'logout' %}
-                                            <span class="badge bg-secondary">خروج / Logout</span>
+                                            <span class="badge bg-secondary">Logout</span>
                                         {% else %}
-                                            <span class="badge bg-danger">فشل / Failed</span>
+                                            <span class="badge bg-danger">Failed</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ log.ip_address or '-' }}</td>
@@ -120,7 +119,7 @@
                         </ul>
                     </nav>
                     {% else %}
-                    <p class="text-muted">لا توجد سجلات دخول.</p>
+                    <p class="text-muted">Aucun enregistrement de connexion.</p>
                     {% endif %}
                 </div>
             </div>
@@ -132,7 +131,7 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-edit me-2"></i>سجل التعديلات والحذف / Modifications</h5>
+                    <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Modifications</h5>
                 </div>
                 <div class="card-body">
                     {% if logs %}
@@ -141,12 +140,12 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>ID</th>
-                                    <th>العملية</th>
-                                    <th>النوع</th>
-                                    <th>المعرف</th>
-                                    <th>التفاصيل</th>
-                                    <th>من قام بها</th>
-                                    <th>التاريخ والوقت</th>
+                                    <th>Action</th>
+                                    <th>Type</th>
+                                    <th>ID</th>
+                                    <th>Détails</th>
+                                    <th>Utilisateur</th>
+                                    <th>Date et heure</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -167,9 +166,9 @@
                                             <table class="table table-sm table-bordered mb-0" style="min-width: 420px;">
                                                 <thead class="table-secondary">
                                                     <tr>
-                                                        <th>الحقل / Champ</th>
-                                                        <th>قبل / Avant</th>
-                                                        <th>بعد / Après</th>
+                                                        <th>Champ</th>
+                                                        <th>Avant</th>
+                                                        <th>Après</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -210,7 +209,7 @@
                         </ul>
                     </nav>
                     {% else %}
-                    <p class="text-muted">لا توجد سجلات تعديل.</p>
+                    <p class="text-muted">Aucun enregistrement de modification.</p>
                     {% endif %}
                 </div>
             </div>

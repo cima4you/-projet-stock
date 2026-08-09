@@ -298,11 +298,11 @@
                                     <td>{{ product.expiration_date }}</td>
                                     <td>
                                         {% if product.days_until_expiry <= 0 %}
-                                        <span class="text-danger font-weight-bold">منتهٍ</span>
+                                        <span class="text-danger font-weight-bold">Expiré</span>
                                         {% elif product.days_until_expiry <= 7 %}
-                                        <span class="text-warning font-weight-bold">{{ product.days_until_expiry }} يوم</span>
+                                        <span class="text-warning font-weight-bold">{{ product.days_until_expiry }} jour(s)</span>
                                         {% else %}
-                                        <span class="text-success">{{ product.days_until_expiry }} يوم</span>
+                                        <span class="text-success">{{ product.days_until_expiry }} jour(s)</span>
                                         {% endif %}
                                     </td>
                                 </tr>

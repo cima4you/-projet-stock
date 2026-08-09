@@ -1,7 +1,7 @@
 import os
 import webbrowser
 import logging
-from flask import Flask
+from flask import Flask, session
 from flask_moment import Moment
 from config import SESSION_SECRET, UPLOAD_FOLDER, LOGO_FOLDER, MAX_CONTENT_LENGTH, DB_PATH
 from db import init_database
@@ -31,6 +31,12 @@ init_database()
 from csrf import init_csrf
 app.config['WTF_CSRF_ENABLED'] = False
 init_csrf(app)
+
+
+@app.before_request
+def force_french():
+    if session.get('lang') != 'fr':
+        session['lang'] = 'fr'
 
 from routes import register_blueprints
 register_blueprints(app)

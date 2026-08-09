@@ -79,8 +79,7 @@ def register_auth_routes(app):
 
     @app.route('/change_language/<lang>')
     def change_language(lang):
-        if lang in ('ar', 'fr'):
-            session['lang'] = lang
+        session['lang'] = 'fr'
         return redirect(request.referrer or url_for('index'))
 
     @app.route('/forgot_password', methods=['GET', 'POST'])
