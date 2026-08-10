@@ -172,18 +172,6 @@ def register_email_routes(app):
             flash(f"Erreur: {str(e)}", 'error')
         return redirect(url_for('email_management'))
 
-    @app.route('/delete_recipient/<int:recipient_id>')
-    @admin_required
-    def delete_recipient(recipient_id):
-        try:
-            execute('DELETE FROM recipient_emails WHERE recipient_id = ?', (recipient_id,))
-            execute('DELETE FROM notification_recipients WHERE id = ?', (recipient_id,))
-            flash("Destinataire supprimé avec succès", 'success')
-        except Exception as e:
-            logger.error(f"Error deleting recipient: {e}")
-            flash(f"Erreur: {str(e)}", 'error')
-        return redirect(url_for('email_management'))
-
     @app.route('/delete_email/<int:email_id>')
     @admin_required
     def delete_email(email_id):
