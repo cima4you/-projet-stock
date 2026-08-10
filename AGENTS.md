@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Système de Gestion de Stock (Stock Management System) - a bilingual (Arabic/French) Flask web application for inventory management.
+Système de Gestion de Stock (Stock Management System) - a French-language Flask web application for inventory management. (Interface et notifications en français uniquement.)
 
 ## Tech Stack
 
@@ -39,14 +39,14 @@ After ALTER TABLE workshop_id was added as the last column, column indices are:
 | `routes/` | Flask blueprints (auth, dashboard, products, movements, users, categories, suppliers, reports, inventory, workshops, etc.) |
 | `templates/` | Jinja2 HTML templates |
 | `static/` | CSS, JS, uploaded logos/images |
-| `email_templates/` | HTML email templates (bilingual) |
+| `email_templates/` | HTML email templates (French) |
 | `main.py` | App entry point |
 | `config.py` | Configuration (SMTP, paths, etc.) |
 | `db.py` | SQLite database setup & queries (includes `workshops` table + migration) |
 | `utils.py` | Utility functions, decorators, `workshop_filter()` helper |
 | `notifications.py` | Email & WhatsApp notifications (scoped by workshop_id) |
 | `csrf.py` | CSRF protection |
-| `translations.py` | Arabic/French bilingual translations |
+| `translations.py` | French labels (legacy Arabic/French translations, interface French-only) |
 
 ## Routes (Blueprints)
 
@@ -60,11 +60,14 @@ Each blueprint is registered in `routes/__init__.py`. Main routes:
 - `/categories` - Category management
 - `/suppliers` - Supplier management
 - `/reports` - PDF/Excel report generation
+- `/audit_log` - Audit log (admin-only, before/after changes + login history)
 - `/inventory` - Physical inventory counting
 - `/email` - Email configuration
 - `/notifications` - WhatsApp notifications
 - `/search` - Search functionality
 - `/workshops` - Workshop management (CRUD)
+- `/workshop_dashboard/<id>` - Per-workshop dashboard (admin only)
+- `/workshop_comparison` - Workshop comparison page (admin only)
 
 ## Database
 
@@ -86,7 +89,8 @@ Each blueprint is registered in `routes/__init__.py`. Main routes:
 
 ## Conventions
 
-- **Language:** Bilingual Arabic/French (translations in `translations.py`)
+- **Language:** French only (interface, emails, reports). Legacy Arabic translations still in `translations.py` but unused.
+- **Quantities:** Decimal quantities supported (REAL), formatted with 2 decimals in templates.
 - **Templates:** Extend `base.html`, use Bootstrap 5 classes
 - **Forms:** Flask-WTF with CSRF
 - **CSS:** Custom styles in `static/css/style.css`

@@ -1,6 +1,6 @@
 # 📦 Système de Gestion de Stock / نظام إدارة المخزون
 
-Application Web de gestion d'inventaire bilingue (Arabe/Français) développée avec **Flask**.
+Application Web de gestion d'inventaire en **français** (interface et notifications) développée avec **Flask**.
 
 ## ✨ Fonctionnalités / الميزات
 
@@ -15,13 +15,15 @@ Application Web de gestion d'inventaire bilingue (Arabe/Français) développée 
 | ✅ Gestion des utilisateurs et rôles | إدارة المستخدمين والصلاحيات |
 | ✅ Inventaire physique (comptage) | جرد فعلي للمخزون |
 | ✅ Alertes stock bas et expiration | تنبيهات المخزون المنخفض وانتهاء الصلاحية |
-| ✅ Support bilingue (Arabe/Français) | دعم ثنائي اللغة (عربي/فرنسي) |
+| ✅ Quantités décimales | كميات عشرية (REAL, تنسيق بعلامتين عشريتين) |
+| ✅ Journal de suivi (audit) avant/après + historique des connexions | سجل المتابعة (قبل/بعد) وسجل تسجيل الدخول |
+| ✅ Multi-ateliers : tableaux de bord par atelier + comparaison | تعدد الورشات: لوحات تحكم لكل ورشة + مقارنة |
 | ✅ Logo personnalisé | شعار مخصص |
 
 ## 🛠 Technologies / التقنيات
 
 - **Backend**: Python 3.11+, Flask 3.1
-- **Base de données**: SQLite
+- **Base de données**: SQLite (PostgreSQL sur Render via `DATABASE_URL`)
 - **Frontend**: Bootstrap 5, Font Awesome 6
 - **Email**: SMTP (Gmail)
 - **WhatsApp**: UltraMsg API / CallMeBot
@@ -32,7 +34,7 @@ Application Web de gestion d'inventaire bilingue (Arabe/Français) développée 
 
 ```bash
 # Cloner le projet
-git clone <votre-repo>
+git clone https://github.com/cima4you/-projet-stock.git
 cd projet_stock
 
 # Installer les dépendances
@@ -84,7 +86,7 @@ projet_stock/
 ├── notifications.py     # Notifications email + WhatsApp
 ├── scheduler.py         # Tâches planifiées
 ├── protect_env.py       # Chiffrement .env
-├── translations.py      # Traductions (ar/fr)
+├── translations.py      # Libellés français (traductions ar/fr héritées, interface fr uniquement)
 ├── routes/
 │   ├── auth.py          # Authentification
 │   ├── dashboard.py     # Tableau de bord
@@ -117,6 +119,11 @@ projet_stock/
 Deux méthodes supportées :
 1. **UltraMsg** ($39/mois après 3 jours d'essai)
 2. **CallMeBot** (gratuit, nécessite activation)
+
+## 🚀 Déploiement
+
+- **Render** : le fichier `render.yaml` crée un Web Service + une base PostgreSQL automatiquement (gunicorn sur le port `$PORT`).
+- **PythonAnywhere** : `git pull origin main` dans le dossier du site puis **Reload** de l'application web.
 
 ## 👤 Auteur
 

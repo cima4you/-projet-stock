@@ -32,7 +32,7 @@
 - Table : `stock_movements` (pas `movements` !).
 
 ### Notifications d'ajout produit
-- `notifications.py` `send_product_addition_notification()` : envoie un email (FR/AR) aux destinataires de l'atelier.
+- `notifications.py` `send_product_addition_notification()` : envoie un email (français) aux destinataires de l'atelier.
 - Destinataires dans `notification_recipients` + `recipient_emails` (gestion via `/email_management`).
 
 ### Rapport quotidien
@@ -107,6 +107,12 @@ curl -s "https://bazighe82.pythonanywhere.com/cron/daily-report?token=RapportQuo
 | 9 | **Nouvelle règle** : édition + suppression de mouvement réservées aux admins (avec recalcul du stock) | `routes/movements.py` (`edit_movement`, `delete_movement`) + `templates/movements.html` + `templates/edit_movement.html` (nouveau) | Aucune édition/suppression de mouvement n'existait | Routes `@admin_required` + boutons admin-only + recalcul automatique de la quantité produit (gardes anti-stock négatif) | ✅ Ajouté 04-08-2026 |
 | 10 | **Nouvelle fonctionnalité** : journal de suivi complet (entrées/sorties + qui a fait quoi) | `routes/auth.py` (login/login_failed/logout), `db.py` (table `login_logs`), `routes/reports.py` (`/audit_log` admin-only + filtres), `templates/audit_log.html` (réécrit : 2 tableaux + pagination + filtres) | Seul `audit_log` existait (create/update/delete), sans enregistrement des connexions | Nouvelle table `login_logs` (user_id, username, action, ip_address, created_at) + `log_audit()` déjà utilisée pour les modifications | ✅ Ajouté 06-08-2026 |
 | 11 | **`database is locked`** : archivage de produit + `log_audit` échouent | `db.py` (`get_db`, `_get_raw_connection`), `utils.py` (`log_audit`), `routes/products.py` (`delete_product`) | `log_audit()` ouvrait une **2e connexion** SQLite dans la transaction `with get_db()` encore ouverte → verrouillage mutuel (surtout quand la tâche APScheduler tournait toutes les 6h) → ni l'audit ni l'archivage ne s'écrivaient | (1) `log_audit()` réutilise la **connexion active** (`threading.local` + `SAVEPOINT` de protection) ; (2) `PRAGMA journal_mode=WAL` + `busy_timeout=30000` ; (3) dans `delete_product`, `log_audit` appelé **après** le commit | ✅ Corrigé 06-08-2026 (`4b12b10`) |
+| 12 | **Nouvelle fonctionnalité** : colonne + filtre « Catégorie » sur les mouvements | `routes/movements.py`, `routes/reports.py`, `notifications.py` (rapport quotidien), templates + exports | Les mouvements n'affichaient pas la catégorie du produit | Colonne Catégorie ajoutée partout (liste, rapports, PDF, Excel) + filtre dans la page mouvements | ✅ Ajouté 07-08-2026 (`5ca1555`, `fe3f2fe`, `89381fd`) |
+| 13 | **Nouvelle fonctionnalité** : audit avant/après sur les modifications | `utils.py` (`build_change_details`, `parse_change_details`), `routes/products.py`, `routes/movements.py` | L'audit ne montrait que la liste des champs modifiés sans les valeurs | Détails « champ → ancienne → nouvelle » affichés dans `/audit_log` | ✅ Ajouté 07-08-2026 (`d7ec99c`) |
+| 14 | **Changement** : application **uniquement en français** | `routes/auth.py` (`change_language` force `fr`), `routes/main_routes.py` (`/change_language/ar` retiré), templates | Interface était bilingue ar/fr | Interface et notifications en français uniquement ; le lien de langue est supprimé | ✅ Fait 07-08-2026 (`a415c50`) |
+| 15 | **Changement** : **archivage automatique désactivé** | `scheduler.py`, `db.py` | L'archivage automatique des produits inactifs (toutes les 6h) modifiait les données sans action utilisateur | Désactivé entièrement — aucune modification automatique des données ; seules les vérifications (expiration, stock bas) et le rapport quotidien restent actifs | ✅ Désactivé 07-08-2026 (`4ff165c`) |
+| 16 | **Nouvelle fonctionnalité** : tableaux de bord par atelier + comparaison | `routes/workshops.py` (`/workshop_dashboard/<id>`, `/workshop_comparison`), templates dédiés | Pas de vue globale par atelier pour l'admin | Pages admin-only avec stats, graphiques et tableaux comparatifs | ✅ Ajouté 07-08-2026 (`6802428`) |
+| 17 | **Nouvelle fonctionnalité** : **quantités décimales** | `db.py` (`_make_quantity_decimal`), `utils.py` (`parse_quantity`), `routes/products.py`, `routes/movements.py`, templates + exports | Quantités entières uniquement | Colonnes `quantity`/`min_quantity`/`theoretical_qty`/`actual_qty`/`difference` passées en `REAL` (SQLite accepte déjà les réels ; ALTER type requis pour PostgreSQL) + parsing/exports décimaux (2 décimales) | ✅ Ajouté 09-08-2026 (`76789a4`) |
 
 ---
 
@@ -136,7 +142,7 @@ Puis **Reload** (Web tab).
 
 ---
 
-## 7. État actuel (06-08-2026)
+## 7. État actuel (09-08-2026)
 
 - ✅ Rapport quotidien : envoyé aux **6** destinataires, statut `sent` (vérifié).
 - ✅ Envoi automatique quotidien à **19:00** (cron-job.org, tz Casablanca) — seul déclencheur.
@@ -146,4 +152,9 @@ Puis **Reload** (Web tab).
 - ✅ Journal de suivi : enregistrement des connexions/déconnexions (table `login_logs`) + `/audit_log` admin-only avec filtres + pagination (`01914a3`) — appliqué sur le serveur.
 - ✅ Correctif `database is locked` (`4b12b10` + `02035d2`) : `log_audit` réutilise la connexion active + WAL + `log_audit` appelé après le commit dans `delete_product`. **Vérifié sur le serveur le 06-08-2026** : archivage + email de notification OK, entrée `delete product` présente dans `audit_log` (`FR00001 - FER TOR DIM 6`, par `admin`, 15:36:31), plus aucun `Failed to log audit` après le Reload.
 - ✅ Test réel effectué : suppression du produit **FER TOR DIM 6** (FR00001) → archivé + journalisé + notification email reçue.
+- ✅ (09-08-2026) **Langue française uniquement** (`a415c50`) : plus de lien de changement de langue ; interface/emails/rapports en français. Les libellés arabes de `translations.py` sont inactifs.
+- ✅ (09-08-2026) **Quantités décimales** (`76789a4`) : migration `_make_quantity_decimal` + `parse_quantity` + exports 2 décimales. À tester sur le serveur après le prochain `git pull` + Reload (la migration tourne au démarrage).
+- ✅ (09-08-2026) **Archivage automatique désactivé** (`4ff165c`) : plus aucune modification automatique de données (produits inactifs non archivés).
+- ✅ (09-08-2026) **Tableaux de bord par atelier + comparaison** (`6802428`) : `/workshop_dashboard/<id>` et `/workshop_comparison`, réservés à l'admin.
 - ⏳ À vérifier périodiquement : boîtes mail des destinataires (y compris Spam) après l'envoi quotidien.
+- ⏳ **À faire** : déployer les nouveautés récentes (décimales, français uniquement, tableaux par atelier) sur le serveur PythonAnywhere (`git pull origin main` + Reload) et vérifier la migration des quantités.
