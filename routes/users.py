@@ -2,7 +2,7 @@ import logging
 from flask import render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash
 from db import get_db, query
-from utils import admin_required, principal_admin_required, get_translation, log_audit
+from utils import admin_required, principal_admin_required, get_translation, log_audit, validate_password_strength
 from translations import TRANSLATIONS
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,14 @@ def register_user_routes(app):
                 workshop_id = request.form.get('workshop_id', '') or None
                 if workshop_id:
                     workshop_id = int(workshop_id)
+                pw_error = validate_password_strength(password)
+                if pw_error:
+                    flash(pw_error, 'error')
+                    workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
+                    return render_template('add_user.html',
+                                         workshops=workshops,
+                                         translations=TRANSLATIONS[session.get('lang', 'fr')],
+                                         lang=session.get('lang', 'fr'))
                 if role == 'principal_admin':
                     flash(get_translation('cannot_create_principal_admin'), 'error')
                     workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
@@ -122,6 +130,10 @@ def register_user_routes(app):
                         return redirect(url_for('edit_user', user_id=user_id))
 
                     if new_password:
+                        pw_error = validate_password_strength(new_password)
+                        if pw_error:
+                            flash(pw_error, 'error')
+                            return redirect(url_for('edit_user', user_id=user_id))
                         pw_hash = generate_password_hash(new_password)
                         cursor.execute('''UPDATE users SET username=?, email=?, role=?, active=?, workshop_id=?, password_hash=?
                                         WHERE id=?''', (username, email, role, active, workshop_id, pw_hash, user_id))
@@ -136,7 +148,7 @@ def register_user_routes(app):
                     logger.error(f"Error updating user: {e}")
                     flash(f"Erreur: {str(e)}", 'error')
 
-            cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+            cursor.execute('SELECT id, username, email, role, active, workshop_id FROM users WHERE id = ?', (user_id,))
             user = cursor.fetchone()
             if not user:
                 flash(get_translation('user_not_found'), 'error')
@@ -146,7 +158,7 @@ def register_user_routes(app):
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
-    @app.route('/delete_user/<int:user_id>')
+    @app.route('/delete_user/<int:user_id>', methods=['POST'])
     @admin_required
     def delete_user(user_id):
         if user_id == session['user_id']:

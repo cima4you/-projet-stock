@@ -1,6 +1,7 @@
 import os
 import sys
 import getpass
+import secrets
 from dotenv import load_dotenv
 
 ENCRYPTED_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,11 +45,18 @@ EMAIL_PASSWORD = os.environ.get('EMAIL_PASSWORD')
 NOTIFICATION_EMAIL = os.environ.get('NOTIFICATION_EMAIL', EMAIL_ADDRESS)
 
 # Session
-SESSION_SECRET = os.environ.get("SESSION_SECRET", "fallback_secret_key_change_in_production")
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
+if not SESSION_SECRET:
+    raise RuntimeError(
+        "SESSION_SECRET must be defined in the environment or .env file. "
+        "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+    )
 
 # Default admin credentials (override in .env)
 DEFAULT_ADMIN_USERNAME = os.environ.get('DEFAULT_ADMIN_USERNAME', 'admin')
-DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', 'bj319260')
+DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', '')
+if not DEFAULT_ADMIN_PASSWORD:
+    DEFAULT_ADMIN_PASSWORD = secrets.token_urlsafe(16)
 DEFAULT_ADMIN_EMAIL = os.environ.get('DEFAULT_ADMIN_EMAIL', 'bazigherachid@gmail.com')
 
 # Paths
@@ -64,7 +72,13 @@ LOGO_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
 
 # Cron secret for external cron jobs (cron-job.org, etc.)
-CRON_SECRET = os.environ.get('CRON_SECRET', 'change_this_in_production')
+CRON_SECRET = os.environ.get('CRON_SECRET', '')
+if not CRON_SECRET:
+    raise RuntimeError("CRON_SECRET must be defined in the environment or .env file.")
+
+# Security headers / cookies
+ENABLE_SECURE_COOKIE = os.environ.get('SECURE_COOKIE', '') == '1'
+FLASK_DEBUG = os.environ.get('FLASK_DEBUG', '') == '1'
 
 # Daily report recipients
 DAILY_REPORT_RECIPIENTS = [

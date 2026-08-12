@@ -42,10 +42,32 @@ def allowed_excel_file(filename: str) -> bool:
     return allowed_file(filename, {'xlsx', 'xls'})
 
 
+def validate_excel_content(file_path: str) -> bool:
+    """Check the actual file signature (not just the extension)."""
+    try:
+        with open(file_path, 'rb') as f:
+            header = f.read(8)
+    except OSError:
+        return False
+    if header[:4] == b'PK\x03\x04':  # xlsx = ZIP container
+        return True
+    if header[:8] == bytes.fromhex('D0CF11E0A1B11AE1'):  # xls = OLE2
+        return True
+    return False
+
+
+def _current_user_row():
+    return query_one('SELECT role, active FROM users WHERE id = ?', (session.get('user_id'),))
+
+
 def login_required(f: Callable) -> Callable:
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
+            return redirect(url_for('login'))
+        user = _current_user_row()
+        if not user or not user['active']:
+            session.clear()
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -56,8 +78,11 @@ def admin_required(f: Callable) -> Callable:
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('login'))
-        user = query_one('SELECT role FROM users WHERE id = ?', (session['user_id'],))
-        if not user or user['role'] not in ('admin', 'principal_admin'):
+        user = _current_user_row()
+        if not user or not user['active']:
+            session.clear()
+            return redirect(url_for('login'))
+        if user['role'] not in ('admin', 'principal_admin'):
             from translations import TRANSLATIONS
             flash(TRANSLATIONS[session.get('lang', 'fr')]['access_denied'], 'error')
             return redirect(url_for('dashboard'))
@@ -70,13 +95,28 @@ def principal_admin_required(f: Callable) -> Callable:
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('login'))
-        user = query_one('SELECT role FROM users WHERE id = ?', (session['user_id'],))
-        if not user or user['role'] != 'principal_admin':
+        user = _current_user_row()
+        if not user or not user['active']:
+            session.clear()
+            return redirect(url_for('login'))
+        if user['role'] != 'principal_admin':
             from translations import TRANSLATIONS
             flash(TRANSLATIONS[session.get('lang', 'fr')]['access_denied'], 'error')
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def validate_password_strength(password: str) -> str:
+    """Returns an error message if the password is too weak, else an empty string."""
+    if not password or len(password) < 8:
+        return "Le mot de passe doit contenir au moins 8 caractères."
+    has_letter = any(c.isalpha() for c in password)
+    has_digit = any(c.isdigit() for c in password)
+    has_special = any(not c.isalnum() for c in password)
+    if not (has_letter and has_digit and has_special):
+        return "Le mot de passe doit contenir des lettres, un chiffre et un caractère spécial."
+    return ""
 
 
 def get_user_info(user_id: int) -> Optional[tuple]:

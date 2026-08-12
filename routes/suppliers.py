@@ -61,7 +61,7 @@ def register_supplier_routes(app):
         flash("Fournisseur modifié avec succès", 'success')
         return redirect(url_for('suppliers'))
 
-    @app.route('/delete_supplier/<int:supplier_id>')
+    @app.route('/delete_supplier/<int:supplier_id>', methods=['POST'])
     @admin_required
     def delete_supplier(supplier_id):
         s = query_one('SELECT name FROM suppliers WHERE id = ?', (supplier_id,))

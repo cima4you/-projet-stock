@@ -357,7 +357,7 @@ def register_movement_routes(app):
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
-    @app.route('/delete_movement/<int:movement_id>')
+    @app.route('/delete_movement/<int:movement_id>', methods=['POST'])
     @admin_required
     def delete_movement(movement_id):
         try:

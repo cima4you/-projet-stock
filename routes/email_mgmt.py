@@ -172,7 +172,7 @@ def register_email_routes(app):
             flash(f"Erreur: {str(e)}", 'error')
         return redirect(url_for('email_management'))
 
-    @app.route('/delete_email/<int:email_id>')
+    @app.route('/delete_email/<int:email_id>', methods=['POST'])
     @admin_required
     def delete_email(email_id):
         try:

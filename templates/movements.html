@@ -230,10 +230,10 @@
                                             <a href="{{ url_for('edit_movement', movement_id=movement[0]) }}" class="btn btn-sm btn-outline-primary" title="{{ translations.edit }}">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="{{ url_for('delete_movement', movement_id=movement[0]) }}" class="btn btn-sm btn-outline-danger" title="{{ translations.delete }}"
-                                               onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce mouvement ? Le stock sera recalculé.');">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
+                                            <form method="POST" action="{{ url_for('delete_movement', movement_id=movement[0]) }}" class="d-inline" title="{{ translations.delete }}" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce mouvement ? Le stock sera recalculé.');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                            </form>
                                         </div>
                                     </td>
                                     {% endif %}

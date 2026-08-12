@@ -78,7 +78,7 @@ Each blueprint is registered in `routes/__init__.py`. Main routes:
 ## Authentication & Authorization
 
 - Roles: `user`, `admin`, `principal_admin`
-- Default admin: `admin` / `bj319260`
+- Default admin: created from `DEFAULT_ADMIN_USERNAME`/`DEFAULT_ADMIN_PASSWORD` env vars (see `config.py`); change the password after first login
 - Password hashing via Werkzeug
 - CSRF protection enabled
 

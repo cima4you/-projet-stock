@@ -14,8 +14,8 @@
 | GitHub | `https://github.com/cima4you/-projet-stock.git` (branche `main`) |
 | Base de données | SQLite `stock.db` (20 produits, 57 mouvements au 04-08-2026) |
 | SMTP | `smtp.gmail.com:587` — expéditeur `bazigherachid@gmail.com` |
-| CRON_SECRET (serveur) | `RapportQuotidien2024` (différent du local `.env` : `123*5487/-`) |
-| Déclencheur rapport quotidien | cron-job.org, job « Rapport quotidien stock », **19:00** tz `Africa/Casablanca`, URL `/cron/daily-report?token=RapportQuotidien2024` |
+| CRON_SECRET (serveur) | défini dans `.env` du serveur (différent du local) |
+| Déclencheur rapport quotidien | cron-job.org, job « Rapport quotidien stock », **19:00** tz `Africa/Casablanca`, URL `/cron/daily-report?token=<CRON_SECRET>` |
 
 ---
 
@@ -24,7 +24,7 @@
 ### Authentification
 1. `routes/auth.py` : login → stocke `workshop_id` + `workshop_name` dans la session.
 2. Toutes les routes de données utilisent `workshop_filter()` de `utils.py` pour filtrer par atelier.
-3. Rôles : `user`, `admin`, `principal_admin`. Admin par défaut : `admin` / `bj319260`.
+3. Rôles : `user`, `admin`, `principal_admin`. Admin par défaut : défini via `DEFAULT_ADMIN_USERNAME`/`DEFAULT_ADMIN_PASSWORD` dans `.env` (à changer après la première connexion).
 
 ### Produits & mouvements
 - `routes/products.py` : ajout/modification produit → insère aussi un `stock_movements` (entry/exit).
@@ -82,7 +82,7 @@ python3 -c "from config import DAILY_REPORT_RECIPIENTS; print(DAILY_REPORT_RECIP
 python3 -c "import sqlite3;c=sqlite3.connect('stock.db');c.execute(\"DELETE FROM notification_logs WHERE notification_type='daily_report' AND DATE(sent_at)=date('now')\");c.commit();print('cleared')"
 
 # Déclencher l'envoi (après reset) — même URL que cron-job.org
-curl -s "https://bazighe82.pythonanywhere.com/cron/daily-report?token=RapportQuotidien2024"
+curl -s "https://bazighe82.pythonanywhere.com/cron/daily-report?token=$CRON_SECRET"
 ```
 
 **Règles d'or** :

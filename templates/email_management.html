@@ -160,9 +160,10 @@
                                             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editRecipientModal{{ recipient.id }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <a href="{{ url_for('delete_email', email_id=email[0]) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer cet email ?')">
-                                                <i class="fas fa-envelope-minus"></i>
-                                            </a>
+                                            <form method="POST" action="{{ url_for('delete_email', email_id=email[0]) }}" class="d-inline" onsubmit="return confirm('Supprimer cet email ?')">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button class="btn btn-sm btn-outline-danger"><i class="fas fa-envelope-minus"></i></button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>

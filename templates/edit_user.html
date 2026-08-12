@@ -30,7 +30,7 @@
                                 <span class="input-group-text">
                                     <i class="fas fa-user"></i>
                                 </span>
-                                <input type="text" class="form-control" id="username" name="username" value="{{ user[1] }}" required>
+                                <input type="text" class="form-control" id="username" name="username" value="{{ user['username'] }}" required>
                             </div>
                         </div>
                         
@@ -40,7 +40,7 @@
                                 <span class="input-group-text">
                                     <i class="fas fa-envelope"></i>
                                 </span>
-                                <input type="email" class="form-control" id="email" name="email" value="{{ user[3] }}" required>
+                                <input type="email" class="form-control" id="email" name="email" value="{{ user['email'] }}" required>
                             </div>
                         </div>
                         
@@ -50,7 +50,7 @@
                                 <span class="input-group-text">
                                     <i class="fas fa-lock"></i>
                                 </span>
-                                <input type="password" class="form-control" id="new_password" name="new_password" minlength="6">
+                                <input type="password" class="form-control" id="new_password" name="new_password" minlength="8">
                                 <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -60,13 +60,13 @@
                         
                         <div class="mb-3">
                             <label for="role" class="form-label">{{ translations.role }} *</label>
-                            <select class="form-select" id="role" name="role" required {% if user[4] == 'principal_admin' %}disabled{% endif %}>
+                            <select class="form-select" id="role" name="role" required {% if user['role'] == 'principal_admin' %}disabled{% endif %}>
                                 <option value="">Sélectionner un rôle</option>
-                                <option value="user" {% if user[4] == 'user' %}selected{% endif %}>{{ translations.user }}</option>
-                                <option value="admin" {% if user[4] == 'admin' %}selected{% endif %}>{{ translations.admin }}</option>
-                                <option value="principal_admin" {% if user[4] == 'principal_admin' %}selected{% endif %}>{{ translations.principal_admin }}</option>
+                                <option value="user" {% if user['role'] == 'user' %}selected{% endif %}>{{ translations.user }}</option>
+                                <option value="admin" {% if user['role'] == 'admin' %}selected{% endif %}>{{ translations.admin }}</option>
+                                <option value="principal_admin" {% if user['role'] == 'principal_admin' %}selected{% endif %}>{{ translations.principal_admin }}</option>
                             </select>
-                            {% if user[4] == 'principal_admin' %}
+                            {% if user['role'] == 'principal_admin' %}
                             <input type="hidden" name="role" value="principal_admin">
                             <div class="form-text text-warning">Le rôle d'administrateur principal ne peut pas être modifié</div>
                             {% endif %}
@@ -77,18 +77,18 @@
                             <select class="form-select" id="workshop_id" name="workshop_id">
                                 <option value="">{{ translations.all_workshops }}</option>
                                 {% for ws in workshops %}
-                                <option value="{{ ws[0] }}" {% if user[10] and user[10] == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
+                                <option value="{{ ws[0] }}" {% if user['workshop_id'] and user['workshop_id'] == ws[0] %}selected{% endif %}>{{ ws[1] }}{% if ws[2] %} - {{ ws[2] }}{% endif %}</option>
                                 {% endfor %}
                             </select>
                             <div class="form-text">{{ translations.recipient_workshop_help }}</div>
                         </div>
 
                         <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="active" name="active" {% if user[5] %}checked{% endif %} {% if user[4] == 'principal_admin' %}disabled{% endif %}>
+                            <input class="form-check-input" type="checkbox" id="active" name="active" {% if user['active'] %}checked{% endif %} {% if user['role'] == 'principal_admin' %}disabled{% endif %}>
                             <label class="form-check-label" for="active">
                                 {{ translations.active }}
                             </label>
-                            {% if user[4] == 'principal_admin' %}
+                            {% if user['role'] == 'principal_admin' %}
                             <input type="hidden" name="active" value="1">
                             <div class="form-text text-warning">L'administrateur principal ne peut pas être désactivé</div>
                             {% endif %}

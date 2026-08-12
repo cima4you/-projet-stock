@@ -31,7 +31,7 @@ if [ ! -f .env ]; then
     cat > .env << 'EOF'
 SESSION_SECRET=pa_$(openssl rand -hex 32)
 DEFAULT_ADMIN_USERNAME=admin
-DEFAULT_ADMIN_PASSWORD=bj319260
+DEFAULT_ADMIN_PASSWORD=$(openssl rand -base64 18)
 DEFAULT_ADMIN_EMAIL=bazigherachid@gmail.com
 EOF
     echo ".env file created"

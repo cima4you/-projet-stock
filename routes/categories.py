@@ -49,7 +49,7 @@ def register_category_routes(app):
         flash("Catégorie modifiée avec succès", 'success')
         return redirect(url_for('categories'))
 
-    @app.route('/delete_category/<int:category_id>')
+    @app.route('/delete_category/<int:category_id>', methods=['POST'])
     @admin_required
     def delete_category(category_id):
         cat = query_one('SELECT name FROM categories WHERE id = ?', (category_id,))

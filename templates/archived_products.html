@@ -35,11 +35,10 @@
                             <td>{{ p[5] }}</td>
                             <td>{{ p[19] or '-' }}</td>
                             <td>
-                                <a href="{{ url_for('restore_product', product_id=p[0]) }}"
-                                   class="btn btn-sm btn-success"
-                                   onclick="return confirm('Restaurer ce produit ?');">
-                                    <i class="fas fa-undo me-1"></i>Restaurer
-                                </a>
+                                <form method="POST" action="{{ url_for('restore_product', product_id=p[0]) }}" class="d-inline" onsubmit="return confirm('Restaurer ce produit ?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="btn btn-sm btn-success"><i class="fas fa-undo me-1"></i>Restaurer</button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}

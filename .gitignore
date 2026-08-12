@@ -11,6 +11,9 @@ __pycache__/
 stock.db
 *.db
 
+# Local backups (contain secrets - never commit)
+backups/
+
 # Uploads
 uploads/*
 !uploads/.gitkeep

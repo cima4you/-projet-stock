@@ -89,7 +89,7 @@ def register_workshop_routes(app):
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
-    @app.route('/delete_workshop/<int:workshop_id>')
+    @app.route('/delete_workshop/<int:workshop_id>', methods=['POST'])
     @admin_required
     def delete_workshop(workshop_id):
         try:

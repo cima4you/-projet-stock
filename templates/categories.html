@@ -39,7 +39,10 @@
                     <input type="text" name="name" value="{{ cat[1] }}" class="form-control form-control-sm d-inline" style="width:auto;" required>
                     <button class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></button>
                   </form>
-                  <a href="{{ url_for('delete_category', category_id=cat[0]) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Supprimer cette catégorie ?')"><i class="fas fa-trash"></i></a>
+                  <form method="POST" action="{{ url_for('delete_category', category_id=cat[0]) }}" class="d-inline" onsubmit="return confirm('Supprimer cette catégorie ?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                  </form>
                 </td>
               </tr>
               {% endfor %}

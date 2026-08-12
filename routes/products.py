@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, session, flash, Response
 from werkzeug.utils import secure_filename
 from db import get_db, query, query_one, execute
-from utils import login_required, admin_required, allowed_excel_file, get_translation, log_audit, workshop_filter, build_change_details, parse_quantity
+from utils import login_required, admin_required, allowed_excel_file, validate_excel_content, get_translation, log_audit, workshop_filter, build_change_details, parse_quantity
 from notifications import send_product_deletion_notification, send_product_addition_notification
 from translations import TRANSLATIONS
 from config import UPLOAD_FOLDER
@@ -287,7 +287,7 @@ def register_product_routes(app):
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
-    @app.route('/delete_product/<int:product_id>')
+    @app.route('/delete_product/<int:product_id>', methods=['POST'])
     @admin_required
     def delete_product(product_id):
         try:
@@ -311,7 +311,7 @@ def register_product_routes(app):
             flash(f"Erreur lors de l'archivage: {str(e)}", 'error')
         return redirect(url_for('products'))
 
-    @app.route('/restore_product/<int:product_id>')
+    @app.route('/restore_product/<int:product_id>', methods=['POST'])
     @admin_required
     def restore_product(product_id):
         try:
@@ -360,6 +360,10 @@ def register_product_routes(app):
                     filename = secure_filename(file.filename)
                     filepath = os.path.join(UPLOAD_FOLDER, filename)
                     file.save(filepath)
+                    if not validate_excel_content(filepath):
+                        os.remove(filepath)
+                        flash(get_translation('invalid_file_type'), 'error')
+                        return redirect(request.url)
                     success, message, imported_count, errors = _import_from_excel(filepath, session['user_id'], session.get('workshop_id'))
                     os.remove(filepath)
                     if success:
