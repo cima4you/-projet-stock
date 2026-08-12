@@ -192,7 +192,7 @@ def send_product_addition_notification(product_info: dict, movement_type: str, a
         if lang == 'ar':
             subject = f"تم إضافة منتج - {product_info['name']}"
             body = (f"تم إضافة منتج جديد إلى المخزون\nاسم المنتج: {product_info['name']}\nكود المنتج: {product_info['code']}\n"
-                    f"الكمية: {product_info['quantity']}\nنوع الإضافة: {type_label['ar']}\n"
+                    f"الكمية: {product_info['quantity']}\nنوع الحركة: {type_label['ar']}\n"
                     f"{extra_text}\n" if extra_text else ""
                     f"تمت الإضافة بواسطة: {added_by_user}\nتاريخ الإضافة: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
                     f"هذا إشعار تلقائي من نظام إدارة المخزون.")
@@ -202,7 +202,7 @@ def send_product_addition_notification(product_info: dict, movement_type: str, a
                         f"""<p><strong>اسم المنتج:</strong> {product_info['name']}</p>"""
                         f"""<p><strong>كود المنتج:</strong> {product_info['code']}</p>"""
                         f"""<p><strong>الكمية:</strong> {product_info['quantity']}</p>"""
-                        f"""<p><strong>نوع الإضافة:</strong> {type_label['ar']}</p>"""
+                        f"""<p><strong>نوع الحركة:</strong> {type_label['ar']}</p>"""
                         f"""{extra_html}"""
                         f"""<p><strong>تمت الإضافة بواسطة:</strong> {added_by_user}</p>"""
                         f"""<p><strong>تاريخ الإضافة:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"""
@@ -211,7 +211,7 @@ def send_product_addition_notification(product_info: dict, movement_type: str, a
             subject = f"Nouveau produit ajouté - {product_info['name']}"
             body = (f"Nouveau produit ajouté au stock\nNom du produit: {product_info['name']}\n"
                     f"Code produit: {product_info['code']}\nQuantité: {product_info['quantity']}\n"
-                    f"Type d'ajout: {type_label['fr']}\n"
+                    f"Type de mouvement: {type_label['fr']}\n"
                     f"{extra_text}\n" if extra_text else ""
                     f"Ajouté par: {added_by_user}\nDate d'ajout: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
                     f"Ceci est une notification automatique du système de gestion de stock.")
@@ -221,7 +221,7 @@ def send_product_addition_notification(product_info: dict, movement_type: str, a
                         f"""<p><strong>Nom du produit:</strong> {product_info['name']}</p>"""
                         f"""<p><strong>Code produit:</strong> {product_info['code']}</p>"""
                         f"""<p><strong>Quantité:</strong> {product_info['quantity']}</p>"""
-                        f"""<p><strong>Type d'ajout:</strong> {type_label['fr']}</p>"""
+                        f"""<p><strong>Type de mouvement:</strong> {type_label['fr']}</p>"""
                         f"""{extra_html}"""
                         f"""<p><strong>Ajouté par:</strong> {added_by_user}</p>"""
                         f"""<p><strong>Date d'ajout:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"""
@@ -684,8 +684,8 @@ def _fallback_html(lang: str, notification_type: str, product_info: dict, user: 
 def _build_addition_html(lang: str, product_info: dict, type_label: str, user: str) -> str:
     now = datetime.now().strftime('%Y-%m-%d %H:%M')
     if lang == 'ar':
-        return f"""<html dir="rtl"><body style="font-family: Arial, sans-serif; direction: rtl; text-align: right;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">تم إضافة منتج جديد</h2></div><p><strong>اسم المنتج:</strong> {product_info['name']}</p><p><strong>كود المنتج:</strong> {product_info['code']}</p><p><strong>الكمية:</strong> {product_info['quantity']}</p><p><strong>نوع الإضافة:</strong> {type_label}</p><p><strong>تمت الإضافة بواسطة:</strong> {user}</p><p><strong>تاريخ الإضافة:</strong> {now}</p><p>هذا إشعار تلقائي من نظام إدارة المخزون.</p></body></html>"""
-    return f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">Nouveau produit ajouté</h2></div><p><strong>Nom du produit:</strong> {product_info['name']}</p><p><strong>Code produit:</strong> {product_info['code']}</p><p><strong>Quantité:</strong> {product_info['quantity']}</p><p><strong>Type d'ajout:</strong> {type_label}</p><p><strong>Ajouté par:</strong> {user}</p><p><strong>Date d'ajout:</strong> {now}</p><p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>"""
+        return f"""<html dir="rtl"><body style="font-family: Arial, sans-serif; direction: rtl; text-align: right;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">تم إضافة منتج جديد</h2></div><p><strong>اسم المنتج:</strong> {product_info['name']}</p><p><strong>كود المنتج:</strong> {product_info['code']}</p><p><strong>الكمية:</strong> {product_info['quantity']}</p><p><strong>نوع الحركة:</strong> {type_label}</p><p><strong>تمت الإضافة بواسطة:</strong> {user}</p><p><strong>تاريخ الإضافة:</strong> {now}</p><p>هذا إشعار تلقائي من نظام إدارة المخزون.</p></body></html>"""
+    return f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">Nouveau produit ajouté</h2></div><p><strong>Nom du produit:</strong> {product_info['name']}</p><p><strong>Code produit:</strong> {product_info['code']}</p><p><strong>Quantité:</strong> {product_info['quantity']}</p><p><strong>Type de mouvement:</strong> {type_label}</p><p><strong>Ajouté par:</strong> {user}</p><p><strong>Date d'ajout:</strong> {now}</p><p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>"""
 
 
 def _generate_products_report() -> BytesIO:
