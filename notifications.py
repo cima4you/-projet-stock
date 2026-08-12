@@ -87,7 +87,7 @@ def log_notification(recipient_email: str, notification_type: str, subject: str,
         logger.error(f"Failed to log notification: {e}")
 
 
-def send_product_deletion_notification(product_info: dict, deleted_by_user: str, lang: str = 'fr', workshop_id=None):
+def send_product_deletion_notification(product_info: dict, deleted_by_user: str, workshop_id=None):
     try:
         ws_filter = ' AND (nr.workshop_id = ? OR nr.workshop_id IS NULL)' if workshop_id else ''
         recipients = query('''
@@ -98,24 +98,14 @@ def send_product_deletion_notification(product_info: dict, deleted_by_user: str,
         if not recipients:
             return
 
-        if lang == 'ar':
-            subject = f"تم حذف منتج - {product_info['name']}"
-            html_body = _load_template('email_templates/product_deleted_ar.html', {
-                'product_name': product_info['name'],
-                'product_code': product_info['code'],
-                'deleted_by': deleted_by_user,
-                'deletion_date': datetime.now().strftime('%Y-%m-%d %H:%M')
-            }) or _fallback_html('ar', 'deletion', product_info, deleted_by_user)
-            body = f"تم حذف منتج من المخزون\nاسم المنتج: {product_info['name']}\nكود المنتج: {product_info['code']}\nتم الحذف بواسطة: {deleted_by_user}\nتاريخ الحذف: {datetime.now().strftime('%Y-%m-%d %H:%M')}\nهذا إشعار تلقائي من نظام إدارة المخزون."
-        else:
-            subject = f"Produit supprimé - {product_info['name']}"
-            html_body = _load_template('email_templates/product_deleted_fr.html', {
-                'product_name': product_info['name'],
-                'product_code': product_info['code'],
-                'deleted_by': deleted_by_user,
-                'deletion_date': datetime.now().strftime('%Y-%m-%d %H:%M')
-            }) or _fallback_html('fr', 'deletion', product_info, deleted_by_user)
-            body = f"Produit supprimé du stock\nNom du produit: {product_info['name']}\nCode produit: {product_info['code']}\nSupprimé par: {deleted_by_user}\nDate de suppression: {datetime.now().strftime('%Y-%m-%d %H:%M')}\nCeci est une notification automatique du système de gestion de stock."
+        subject = f"Produit supprimé - {product_info['name']}"
+        html_body = _load_template('email_templates/product_deleted_fr.html', {
+            'product_name': product_info['name'],
+            'product_code': product_info['code'],
+            'deleted_by': deleted_by_user,
+            'deletion_date': datetime.now().strftime('%Y-%m-%d %H:%M')
+        }) or _fallback_html('deletion', product_info, deleted_by_user)
+        body = f"Produit supprimé du stock\nNom du produit: {product_info['name']}\nCode produit: {product_info['code']}\nSupprimé par: {deleted_by_user}\nDate de suppression: {datetime.now().strftime('%Y-%m-%d %H:%M')}\nCeci est une notification automatique du système de gestion de stock."
 
         for recipient in recipients:
             success = send_email(recipient['email'], subject, body, html_body)
@@ -126,7 +116,7 @@ def send_product_deletion_notification(product_info: dict, deleted_by_user: str,
         logger.error(f"Failed to send deletion notification: {e}")
 
 
-def send_product_addition_notification(product_info: dict, movement_type: str, added_by_user: str, lang: str = 'fr', workshop_id=None):
+def send_product_addition_notification(product_info: dict, movement_type: str, added_by_user: str, workshop_id=None):
     try:
         type_mapping = {
             'achat_par_bc': 'BC', 'achat_par_caisse': 'Caisse',
@@ -157,75 +147,55 @@ def send_product_addition_notification(product_info: dict, movement_type: str, a
             return
 
         type_labels = {
-            'BC': {'fr': 'Achat par BC', 'ar': 'شراء عبر أمر شراء'},
-            'Caisse': {'fr': 'Achat par Caisse', 'ar': 'شراء عبر الصندوق'},
-            'À régulariser': {'fr': 'Achat à Régulariser', 'ar': 'شراء لتسويته لاحقًا'},
-            'Transfert': {'fr': 'Transfert', 'ar': 'نقل'},
-            'Consommation': {'fr': 'Consommation interne', 'ar': 'استهلاك داخلي'},
+            'BC': 'Achat par BC',
+            'Caisse': 'Achat par Caisse',
+            'À régulariser': 'Achat à Régulariser',
+            'Transfert': 'Transfert',
+            'Consommation': 'Consommation interne',
         }
-        type_label = type_labels.get(normalized_type, {'fr': 'Inconnu', 'ar': 'غير معروف'})
+        type_label = type_labels.get(normalized_type, 'Inconnu')
 
         extra_fields = [
-            ('supplier_name', 'Nom Fournisseur', 'اسم المورد'),
-            ('bc_number', 'Numéro BC', 'رقم أمر الشراء'),
-            ('bl_number', 'Numéro BL', 'رقم بوليصة الشحن'),
-            ('n_facture', 'Numéro Facture', 'رقم الفاتورة'),
-            ('chantier_exp_recep', 'Chantier/Exp/Récep', 'الورشة / الشحن / الاستلام'),
-            ('nom_donneur_ordre', "Donneur d'ordre", 'آمر الصرف'),
-            ('nom_magasinier', 'Magasinier', 'أمين المستودع'),
-            ('nom_chauffeur', 'Chauffeur', 'السائق'),
-            ('matricule', 'Matricule', 'رقم السيارة'),
+            ('supplier_name', 'Nom Fournisseur'),
+            ('bc_number', 'Numéro BC'),
+            ('bl_number', 'Numéro BL'),
+            ('n_facture', 'Numéro Facture'),
+            ('chantier_exp_recep', 'Chantier/Exp/Récep'),
+            ('nom_donneur_ordre', "Donneur d'ordre"),
+            ('nom_magasinier', 'Magasinier'),
+            ('nom_chauffeur', 'Chauffeur'),
+            ('matricule', 'Matricule'),
         ]
 
-        def build_extra(lang, sep, fmt):
+        def build_extra(sep, fmt):
             parts = []
-            for key, fr_label, ar_label in extra_fields:
+            for key, fr_label in extra_fields:
                 val = str(product_info.get(key, '')).strip()
                 if val:
-                    label = ar_label if lang == 'ar' else fr_label
-                    parts.append(fmt(label, val))
+                    parts.append(fmt(fr_label, val))
             return sep.join(parts)
 
-        extra_text = build_extra(lang, '\n', lambda l, v: f"{l}: {v}")
-        extra_html = build_extra(lang, '', lambda l, v: f"<p><strong>{l}:</strong> {v}</p>")
+        extra_text = build_extra('\n', lambda l, v: f"{l}: {v}")
+        extra_html = build_extra('', lambda l, v: f"<p><strong>{l}:</strong> {v}</p>")
 
-        if lang == 'ar':
-            subject = f"تم إضافة منتج - {product_info['name']}"
-            body = (f"تم إضافة منتج جديد إلى المخزون\nاسم المنتج: {product_info['name']}\nكود المنتج: {product_info['code']}\n"
-                    f"الكمية: {product_info['quantity']}\nنوع الحركة: {type_label['ar']}\n"
-                    f"{extra_text}\n" if extra_text else ""
-                    f"تمت الإضافة بواسطة: {added_by_user}\nتاريخ الإضافة: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
-                    f"هذا إشعار تلقائي من نظام إدارة المخزون.")
-            html_body = (f"""<html dir="rtl"><body style="font-family: Arial, sans-serif; direction: rtl; text-align: right;">"""
-                        f"""<div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;">"""
-                        f"""<h2 style="color:#007bff;">تم إضافة منتج جديد</h2></div>"""
-                        f"""<p><strong>اسم المنتج:</strong> {product_info['name']}</p>"""
-                        f"""<p><strong>كود المنتج:</strong> {product_info['code']}</p>"""
-                        f"""<p><strong>الكمية:</strong> {product_info['quantity']}</p>"""
-                        f"""<p><strong>نوع الحركة:</strong> {type_label['ar']}</p>"""
-                        f"""{extra_html}"""
-                        f"""<p><strong>تمت الإضافة بواسطة:</strong> {added_by_user}</p>"""
-                        f"""<p><strong>تاريخ الإضافة:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"""
-                        f"""<p>هذا إشعار تلقائي من نظام إدارة المخزون.</p></body></html>""")
-        else:
-            subject = f"Nouveau produit ajouté - {product_info['name']}"
-            body = (f"Nouveau produit ajouté au stock\nNom du produit: {product_info['name']}\n"
-                    f"Code produit: {product_info['code']}\nQuantité: {product_info['quantity']}\n"
-                    f"Type de mouvement: {type_label['fr']}\n"
-                    f"{extra_text}\n" if extra_text else ""
-                    f"Ajouté par: {added_by_user}\nDate d'ajout: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
-                    f"Ceci est une notification automatique du système de gestion de stock.")
-            html_body = (f"""<html><body style="font-family: Arial, sans-serif;">"""
-                        f"""<div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;">"""
-                        f"""<h2 style="color:#007bff;">Nouveau produit ajouté</h2></div>"""
-                        f"""<p><strong>Nom du produit:</strong> {product_info['name']}</p>"""
-                        f"""<p><strong>Code produit:</strong> {product_info['code']}</p>"""
-                        f"""<p><strong>Quantité:</strong> {product_info['quantity']}</p>"""
-                        f"""<p><strong>Type de mouvement:</strong> {type_label['fr']}</p>"""
-                        f"""{extra_html}"""
-                        f"""<p><strong>Ajouté par:</strong> {added_by_user}</p>"""
-                        f"""<p><strong>Date d'ajout:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"""
-                        f"""<p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>""")
+        subject = f"Nouveau produit ajouté - {product_info['name']}"
+        body = (f"Nouveau produit ajouté au stock\nNom du produit: {product_info['name']}\n"
+                f"Code produit: {product_info['code']}\nQuantité: {product_info['quantity']}\n"
+                f"Type de mouvement: {type_label}\n"
+                f"{extra_text}\n" if extra_text else ""
+                f"Ajouté par: {added_by_user}\nDate d'ajout: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+                f"Ceci est une notification automatique du système de gestion de stock.")
+        html_body = (f"""<html><body style="font-family: Arial, sans-serif;">"""
+                    f"""<div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;">"""
+                    f"""<h2 style="color:#007bff;">Nouveau produit ajouté</h2></div>"""
+                    f"""<p><strong>Nom du produit:</strong> {product_info['name']}</p>"""
+                    f"""<p><strong>Code produit:</strong> {product_info['code']}</p>"""
+                    f"""<p><strong>Quantité:</strong> {product_info['quantity']}</p>"""
+                    f"""<p><strong>Type de mouvement:</strong> {type_label}</p>"""
+                    f"""{extra_html}"""
+                    f"""<p><strong>Ajouté par:</strong> {added_by_user}</p>"""
+                    f"""<p><strong>Date d'ajout:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"""
+                    f"""<p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>""")
 
         for recipient in recipients:
             success = send_email(recipient['email'], subject, body, html_body)
@@ -236,7 +206,7 @@ def send_product_addition_notification(product_info: dict, movement_type: str, a
         logger.error(f"Failed to send addition notification: {e}")
 
 
-def send_product_exit_notification(product_info: dict, movement_type: str, removed_by_user: str, lang: str = 'fr', workshop_id=None):
+def send_product_exit_notification(product_info: dict, movement_type: str, removed_by_user: str, workshop_id=None):
     try:
         if movement_type != 'exit':
             return
@@ -262,80 +232,57 @@ def send_product_exit_notification(product_info: dict, movement_type: str, remov
         notes = product_info.get('notes', '').strip()
         has_notes = bool(notes)
         type_labels = {
-            'transfert': {'fr': 'Transfert', 'ar': 'نقل'},
-            'consommation': {'fr': 'Consommation interne', 'ar': 'استهلاك داخلي'},
-            'perte': {'fr': 'Perte', 'ar': 'خسارة'},
-            'vendu': {'fr': 'Vendu', 'ar': 'بيع'},
-            'expire': {'fr': 'Expiré', 'ar': 'منتهي الصلاحية'}
+            'transfert': 'Transfert',
+            'consommation': 'Consommation interne',
+            'perte': 'Perte',
+            'vendu': 'Vendu',
+            'expire': 'Expiré'
         }
-        type_label = type_labels.get(exit_type, {'fr': 'Inconnu', 'ar': 'غير معروف'})
+        type_label = type_labels.get(exit_type, 'Inconnu')
 
         extra_fields = [
-            ('supplier_name', 'Nom Fournisseur', 'اسم المورد'),
-            ('bc_number', 'Numéro BC', 'رقم أمر الشراء'),
-            ('bl_number', 'Numéro BL', 'رقم بوليصة الشحن'),
-            ('n_facture', 'Numéro Facture', 'رقم الفاتورة'),
-            ('chantier_exp_recep', 'Chantier/Exp/Récep', 'الورشة / الشحن / الاستلام'),
-            ('nom_donneur_ordre', "Donneur d'ordre", 'آمر الصرف'),
-            ('nom_chauffeur', 'Chauffeur', 'السائق'),
-            ('matricule', 'Matricule', 'رقم السيارة'),
+            ('supplier_name', 'Nom Fournisseur'),
+            ('bc_number', 'Numéro BC'),
+            ('bl_number', 'Numéro BL'),
+            ('n_facture', 'Numéro Facture'),
+            ('chantier_exp_recep', 'Chantier/Exp/Récep'),
+            ('nom_donneur_ordre', "Donneur d'ordre"),
+            ('nom_chauffeur', 'Chauffeur'),
+            ('matricule', 'Matricule'),
         ]
 
         def build_extra_text(sep, fmt):
             parts = []
-            for key, fr_label, ar_label in extra_fields:
+            for key, fr_label in extra_fields:
                 val = str(product_info.get(key, '')).strip()
                 if val:
-                    label = ar_label if lang == 'ar' else fr_label
-                    parts.append(fmt(label, val))
+                    parts.append(fmt(fr_label, val))
             return sep.join(parts)
 
         extra_text = build_extra_text('\n', lambda l, v: f"{l}: {v}")
         extra_html = build_extra_text('', lambda l, v: f"<p><strong>{l}:</strong> {v}</p>")
 
-        if lang == 'ar':
-            subject = f"تم خروج منتج - {product_info['name']}"
-            notes_text = f"\nملاحظة: {notes}\n" if has_notes else ""
-            notes_html = f"<p><strong>ملاحظة:</strong> {notes}</p>" if has_notes else ""
-            body = (f"تم خروج منتج من المخزون\nاسم المنتج: {product_info['name']}\nكود المنتج: {product_info['code']}\n"
-                    f"الكمية: {product_info['quantity']}\nنوع الخروج: {type_label['ar']}\n"
-                    f"{extra_text}\n" if extra_text else ""
-                    f"تمت الإزالة بواسطة: {removed_by_user}\n"
-                    f"تاريخ الخروج: {datetime.now().strftime('%Y-%m-%d %H:%M')}{notes_text}"
-                    f"هذا إشعار تلقائي من نظام إدارة المخزون.")
-            html_body = (f"""<html dir="rtl"><body style="font-family: Arial, sans-serif; direction: rtl; text-align: right;">"""
-                        f"""<div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #dc3545;">"""
-                        f"""<h2 style="color:#dc3545;">تم خروج منتج</h2></div>"""
-                        f"""<p><strong>اسم المنتج:</strong> {product_info['name']}</p>"""
-                        f"""<p><strong>كود المنتج:</strong> {product_info['code']}</p>"""
-                        f"""<p><strong>الكمية:</strong> {product_info['quantity']}</p>"""
-                        f"""<p><strong>نوع الخروج:</strong> {type_label['ar']}</p>"""
-                        f"""{extra_html}"""
-                        f"""<p><strong>تمت الإزالة بواسطة:</strong> {removed_by_user}</p>"""
-                        f"""<p><strong>تاريخ الخروج:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"""
-                        f"""{notes_html}<p>هذا إشعار تلقائي من نظام إدارة المخزون.</p></body></html>""")
-        else:
-            subject = f"Sortie de produit - {product_info['name']}"
-            notes_text = f"\nNote: {notes}\n" if has_notes else ""
-            notes_html = f"<p><strong>Note:</strong> {notes}</p>" if has_notes else ""
-            body = (f"Sortie de produit du stock\nNom du produit: {product_info['name']}\n"
-                    f"Code produit: {product_info['code']}\nQuantité: {product_info['quantity']}\n"
-                    f"Type de sortie: {type_label['fr']}\n"
-                    f"{extra_text}\n" if extra_text else ""
-                    f"Retiré par: {removed_by_user}\n"
-                    f"Date de sortie: {datetime.now().strftime('%Y-%m-%d %H:%M')}{notes_text}"
-                    f"Ceci est une notification automatique du système de gestion de stock.")
-            html_body = (f"""<html><body style="font-family: Arial, sans-serif;">"""
-                        f"""<div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #dc3545;">"""
-                        f"""<h2 style="color:#dc3545;">Sortie de produit</h2></div>"""
-                        f"""<p><strong>Nom du produit:</strong> {product_info['name']}</p>"""
-                        f"""<p><strong>Code produit:</strong> {product_info['code']}</p>"""
-                        f"""<p><strong>Quantité:</strong> {product_info['quantity']}</p>"""
-                        f"""<p><strong>Type de sortie:</strong> {type_label['fr']}</p>"""
-                        f"""{extra_html}"""
-                        f"""<p><strong>Retiré par:</strong> {removed_by_user}</p>"""
-                        f"""<p><strong>Date de sortie:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"""
-                        f"""{notes_html}<p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>""")
+        subject = f"Sortie de produit - {product_info['name']}"
+        notes_text = f"\nNote: {notes}\n" if has_notes else ""
+        notes_html = f"<p><strong>Note:</strong> {notes}</p>" if has_notes else ""
+        body = (f"Sortie de produit du stock\nNom du produit: {product_info['name']}\n"
+                f"Code produit: {product_info['code']}\nQuantité: {product_info['quantity']}\n"
+                f"Type de sortie: {type_label}\n"
+                f"{extra_text}\n" if extra_text else ""
+                f"Retiré par: {removed_by_user}\n"
+                f"Date de sortie: {datetime.now().strftime('%Y-%m-%d %H:%M')}{notes_text}"
+                f"Ceci est une notification automatique du système de gestion de stock.")
+        html_body = (f"""<html><body style="font-family: Arial, sans-serif;">"""
+                    f"""<div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #dc3545;">"""
+                    f"""<h2 style="color:#dc3545;">Sortie de produit</h2></div>"""
+                    f"""<p><strong>Nom du produit:</strong> {product_info['name']}</p>"""
+                    f"""<p><strong>Code produit:</strong> {product_info['code']}</p>"""
+                    f"""<p><strong>Quantité:</strong> {product_info['quantity']}</p>"""
+                    f"""<p><strong>Type de sortie:</strong> {type_label}</p>"""
+                    f"""{extra_html}"""
+                    f"""<p><strong>Retiré par:</strong> {removed_by_user}</p>"""
+                    f"""<p><strong>Date de sortie:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"""
+                    f"""{notes_html}<p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>""")
 
         for recipient in recipients:
             success = send_email(recipient['email'], subject, body, html_body)
@@ -346,7 +293,7 @@ def send_product_exit_notification(product_info: dict, movement_type: str, remov
         logger.error(f"Failed to send exit notification: {e}")
 
 
-def send_expiring_products_notification(expiring_products: list, lang: str = 'fr', workshop_id=None):
+def send_expiring_products_notification(expiring_products: list, workshop_id=None):
     try:
         ws_filter = ' AND (nr.workshop_id = ? OR nr.workshop_id IS NULL)' if workshop_id else ''
         ws_params = (workshop_id,) if workshop_id else ()
@@ -357,28 +304,16 @@ def send_expiring_products_notification(expiring_products: list, lang: str = 'fr
         if not recipients or not expiring_products:
             return
 
-        if lang == 'ar':
-            subject = f"منتجات قاربت على انتهاء الصلاحية - {len(expiring_products)} منتج"
-            products_rows = ""
-            for p in expiring_products:
-                days = (datetime.strptime(p['expiration_date'], '%Y-%m-%d').date() - datetime.now().date()).days
-                products_rows += f"<tr><td>{p['name']}</td><td>{p['code']}</td><td>{p['expiration_date']}</td><td>{days} يوم</td></tr>"
-            html_body = f"""<html dir="rtl"><body style="font-family: Arial, sans-serif; direction: rtl; text-align: right;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #ffc107;"><h2 style="color:#ffc107;">منتجات قاربت على انتهاء الصلاحية</h2></div><p>تم العثور على {len(expiring_products)} منتج قارب على انتهاء الصلاحية:</p><table border="1" style="border-collapse: collapse; width: 100%;"><tr><th>اسم المنتج</th><th>الكود</th><th>تاريخ انتهاء الصلاحية</th><th>الأيام المتبقية</th></tr>{products_rows}</table><p>تاريخ الفحص: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p><p>هذا إشعار تلقائي من نظام إدارة المخزون.</p></body></html>"""
-            body = f"منتجات قاربت على انتهاء الصلاحية\nتم العثور على {len(expiring_products)} منتج:\n"
-            for p in expiring_products:
-                days = (datetime.strptime(p['expiration_date'], '%Y-%m-%d').date() - datetime.now().date()).days
-                body += f"- {p['name']} ({p['code']}) - ينتهي في {days} يوم\n"
-        else:
-            subject = f"Produits expirant bientôt - {len(expiring_products)} produits"
-            products_rows = ""
-            for p in expiring_products:
-                days = (datetime.strptime(p['expiration_date'], '%Y-%m-%d').date() - datetime.now().date()).days
-                products_rows += f"<tr><td>{p['name']}</td><td>{p['code']}</td><td>{p['expiration_date']}</td><td>{days} jours</td></tr>"
-            html_body = f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #ffc107;"><h2 style="color:#ffc107;">Produits expirant bientôt</h2></div><p>{len(expiring_products)} produits approchent de leur date d'expiration :</p><table border="1" style="border-collapse: collapse; width: 100%;"><tr><th>Nom du produit</th><th>Code</th><th>Date d'expiration</th><th>Jours restants</th></tr>{products_rows}</table><p>Date de vérification: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p><p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>"""
-            body = f"Produits expirant bientôt\n{len(expiring_products)} produits approchent de leur date d'expiration :\n"
-            for p in expiring_products:
-                days = (datetime.strptime(p['expiration_date'], '%Y-%m-%d').date() - datetime.now().date()).days
-                body += f"- {p['name']} ({p['code']}) - expire dans {days} jours\n"
+        subject = f"Produits expirant bientôt - {len(expiring_products)} produits"
+        products_rows = ""
+        for p in expiring_products:
+            days = (datetime.strptime(p['expiration_date'], '%Y-%m-%d').date() - datetime.now().date()).days
+            products_rows += f"<tr><td>{p['name']}</td><td>{p['code']}</td><td>{p['expiration_date']}</td><td>{days} jours</td></tr>"
+        html_body = f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #ffc107;"><h2 style="color:#ffc107;">Produits expirant bientôt</h2></div><p>{len(expiring_products)} produits approchent de leur date d'expiration :</p><table border="1" style="border-collapse: collapse; width: 100%;"><tr><th>Nom du produit</th><th>Code</th><th>Date d'expiration</th><th>Jours restants</th></tr>{products_rows}</table><p>Date de vérification: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p><p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>"""
+        body = f"Produits expirant bientôt\n{len(expiring_products)} produits approchent de leur date d'expiration :\n"
+        for p in expiring_products:
+            days = (datetime.strptime(p['expiration_date'], '%Y-%m-%d').date() - datetime.now().date()).days
+            body += f"- {p['name']} ({p['code']}) - expire dans {days} jours\n"
 
         for recipient in recipients:
             success = send_email(recipient['email'], subject, body, html_body)
@@ -389,17 +324,12 @@ def send_expiring_products_notification(expiring_products: list, lang: str = 'fr
         logger.error(f"Failed to send expiration notification: {e}")
 
 
-def send_password_reset_email(to_email: str, reset_token: str, lang: str = 'fr') -> bool:
+def send_password_reset_email(to_email: str, reset_token: str) -> bool:
     from flask import request
     reset_url = f"{request.host_url}reset_password/{reset_token}"
-    if lang == 'ar':
-        subject = "إعادة تعيين كلمة المرور - نظام إدارة المخزون"
-        body = f"إعادة تعيين كلمة المرور\nتلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بك.\nانسخ الرابط التالي: {reset_url}\nإذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد الإلكتروني.\nالرابط صالح لمدة ساعة واحدة فقط."
-        html_body = f"""<html dir="rtl"><body style="font-family: Arial, sans-serif; direction: rtl; text-align: right;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">إعادة تعيين كلمة المرور</h2></div><p>تلقينا طلباً لإعادة تعيين كلمة المرور الخاصة بك.</p><p><a href="{reset_url}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">إعادة تعيين كلمة المرور</a></p><p>إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذا البريد الإلكتروني.</p><p>الرابط صالح لمدة ساعة واحدة فقط.</p></body></html>"""
-    else:
-        subject = "Réinitialisation du mot de passe - Système de gestion de stock"
-        body = f"Réinitialisation du mot de passe\nNous avons reçu une demande de réinitialisation de votre mot de passe.\nCopiez et collez le lien suivant: {reset_url}\nSi vous n'avez pas demandé de réinitialisation, veuillez ignorer cet email.\nCe lien est valide pendant une heure seulement."
-        html_body = f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">Réinitialisation du mot de passe</h2></div><p>Nous avons reçu une demande de réinitialisation de votre mot de passe.</p><p><a href="{reset_url}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Réinitialiser le mot de passe</a></p><p>Si vous n'avez pas demandé de réinitialisation, veuillez ignorer cet email.</p><p>Ce lien est valide pendant une heure seulement.</p></body></html>"""
+    subject = "Réinitialisation du mot de passe - Système de gestion de stock"
+    body = f"Réinitialisation du mot de passe\nNous avons reçu une demande de réinitialisation de votre mot de passe.\nCopiez et collez le lien suivant: {reset_url}\nSi vous n'avez pas demandé de réinitialisation, veuillez ignorer cet email.\nCe lien est valide pendant une heure seulement."
+    html_body = f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">Réinitialisation du mot de passe</h2></div><p>Nous avons reçu une demande de réinitialisation de votre mot de passe.</p><p><a href="{reset_url}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Réinitialiser le mot de passe</a></p><p>Si vous n'avez pas demandé de réinitialisation, veuillez ignorer cet email.</p><p>Ce lien est valide pendant une heure seulement.</p></body></html>"""
     return send_email(to_email, subject, body, html_body)
 
 
@@ -555,7 +485,7 @@ def send_daily_report_if_not_sent(recipient_emails=None):
         movements_output = _generate_movements_report()
         movements_pdf_output = _generate_movements_pdf()
 
-        subject = f"التقرير اليومي - {today_str} / Rapport quotidien - {today_str}"
+        subject = f"Rapport quotidien - {today_str}"
         body = f"Bonjour,\nVeuillez trouver ci-joint les rapports quotidiens pour la date du {today_str}.\nCordialement,\nLe Système de Gestion de Stock"
 
         for recipient_email in recipient_emails:
@@ -674,18 +604,9 @@ def _load_template(path: str, variables: dict) -> Optional[str]:
         return None
 
 
-def _fallback_html(lang: str, notification_type: str, product_info: dict, user: str) -> str:
+def _fallback_html(notification_type: str, product_info: dict, user: str) -> str:
     now = datetime.now().strftime('%Y-%m-%d %H:%M')
-    if lang == 'ar':
-        return f"""<html dir="rtl"><body style="font-family: Arial, sans-serif; direction: rtl; text-align: right;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #dc3545;"><h2 style="color:#dc3545;">تم حذف منتج من المخزون</h2></div><p><strong>اسم المنتج:</strong> {product_info['name']}</p><p><strong>كود المنتج:</strong> {product_info['code']}</p><p><strong>تم الحذف بواسطة:</strong> {user}</p><p><strong>تاريخ الحذف:</strong> {now}</p><p>هذا إشعار تلقائي من نظام إدارة المخزون.</p></body></html>"""
     return f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #dc3545;"><h2 style="color:#dc3545;">Produit supprimé du stock</h2></div><p><strong>Nom du produit:</strong> {product_info['name']}</p><p><strong>Code produit:</strong> {product_info['code']}</p><p><strong>Supprimé par:</strong> {user}</p><p><strong>Date de suppression:</strong> {now}</p><p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>"""
-
-
-def _build_addition_html(lang: str, product_info: dict, type_label: str, user: str) -> str:
-    now = datetime.now().strftime('%Y-%m-%d %H:%M')
-    if lang == 'ar':
-        return f"""<html dir="rtl"><body style="font-family: Arial, sans-serif; direction: rtl; text-align: right;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">تم إضافة منتج جديد</h2></div><p><strong>اسم المنتج:</strong> {product_info['name']}</p><p><strong>كود المنتج:</strong> {product_info['code']}</p><p><strong>الكمية:</strong> {product_info['quantity']}</p><p><strong>نوع الحركة:</strong> {type_label}</p><p><strong>تمت الإضافة بواسطة:</strong> {user}</p><p><strong>تاريخ الإضافة:</strong> {now}</p><p>هذا إشعار تلقائي من نظام إدارة المخزون.</p></body></html>"""
-    return f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #007bff;"><h2 style="color:#007bff;">Nouveau produit ajouté</h2></div><p><strong>Nom du produit:</strong> {product_info['name']}</p><p><strong>Code produit:</strong> {product_info['code']}</p><p><strong>Quantité:</strong> {product_info['quantity']}</p><p><strong>Type de mouvement:</strong> {type_label}</p><p><strong>Ajouté par:</strong> {user}</p><p><strong>Date d'ajout:</strong> {now}</p><p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>"""
 
 
 def _generate_products_report() -> BytesIO:

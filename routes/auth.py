@@ -95,7 +95,7 @@ def register_auth_routes(app):
                     expires_at = datetime.now() + timedelta(hours=1)
                     cursor.execute('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
                                    (reset_token, expires_at, user['id']))
-                    send_password_reset_email(email, reset_token, session.get('lang', 'fr'))
+                    send_password_reset_email(email, reset_token)
                     flash(get_translation('password_reset_email_sent'), 'success')
                 else:
                     flash(get_translation('password_reset_email_sent'), 'success')

@@ -222,7 +222,7 @@ def register_movement_routes(app):
                              'n_facture': n_facture, 'chantier_exp_recep': chantier_exp_recep,
                              'nom_donneur_ordre': nom_donneur_ordre, 'nom_chauffeur': nom_chauffeur,
                              'matricule': matricule},
-                            'entry', session['username'], session.get('lang', 'fr'),
+                            'entry', session['username'],
                             workshop_id=session.get('workshop_id'))
                     elif movement_type == 'exit':
                         send_product_exit_notification(
@@ -232,7 +232,7 @@ def register_movement_routes(app):
                              'n_facture': n_facture, 'chantier_exp_recep': chantier_exp_recep,
                              'nom_donneur_ordre': nom_donneur_ordre, 'nom_chauffeur': nom_chauffeur,
                              'matricule': matricule},
-                            'exit', session['username'], session.get('lang', 'fr'),
+                            'exit', session['username'],
                             workshop_id=session.get('workshop_id'))
 
                 log_audit('create', 'movement', cursor.lastrowid,

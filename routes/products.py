@@ -165,7 +165,7 @@ def register_product_routes(app):
                             {'id': product_id, 'code': code, 'name': name, 'quantity': quantity, 'type_achat': type_achat,
                              'supplier_name': supplier_name, 'bc_number': bc_number, 'bl_number': bl_number,
                              'n_facture': n_facture},
-                            'entry', session['username'], session.get('lang', 'fr'),
+                            'entry', session['username'],
                             workshop_id=session.get('workshop_id'))
 
                 flash(get_translation('product_added_successfully'), 'success')
@@ -304,7 +304,6 @@ def register_product_routes(app):
             log_audit('delete', 'product', product_id, f"Archive du produit {product['code']} - {product['name']}")
 
             send_product_deletion_notification(product_info, deleted_by_user=session['username'],
-                                                lang=session.get('lang', 'fr'),
                                                 workshop_id=session.get('workshop_id'))
             flash("Produit archivé avec succès", 'success')
         except Exception as e:
@@ -577,7 +576,7 @@ def _import_from_excel(file_path: str, user_id: int, workshop_id=None):
                          'quantity': qty, 'type_achat': row.get('type_achat', ''),
                          'supplier_name': row.get('supplier_name', ''), 'bc_number': row.get('bc_number', ''),
                          'bl_number': row.get('bl_number', ''), 'n_facture': row.get('n_facture', '')},
-                        'entry', 'Système (Import Excel)', 'fr',
+                        'entry', 'Système (Import Excel)',
                         workshop_id=workshop_id)
 
                 imported_count += 1

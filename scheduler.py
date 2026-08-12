@@ -14,7 +14,7 @@ def check_expiry_job():
             expiring = check_expiring_products(days_threshold=days)
             if expiring:
                 logger.info(f"Found {len(expiring)} products expiring within {days} days")
-                send_expiring_products_notification(expiring, lang='fr')
+                send_expiring_products_notification(expiring)
     except Exception as e:
         logger.error(f"APScheduler expiry check error: {e}")
 

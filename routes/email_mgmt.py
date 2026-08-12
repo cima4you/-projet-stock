@@ -189,7 +189,7 @@ def register_email_routes(app):
         try:
             expiring = check_expiring_products(30)
             if expiring:
-                send_expiring_products_notification(expiring, session.get('lang', 'fr'), workshop_id=session.get('workshop_id'))
+                send_expiring_products_notification(expiring, workshop_id=session.get('workshop_id'))
                 flash(f"Vérification terminée. {len(expiring)} produits expirent bientôt.", 'info')
             else:
                 flash("Aucun produit n'expire dans les 30 prochains jours.", 'info')
