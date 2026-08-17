@@ -94,7 +94,7 @@ def register_email_routes(app):
             recipient_id = execute('''
                 INSERT INTO notification_recipients (name, email, workshop_id)
                 VALUES (?, ?, ?)
-            ''', (name, 'placeholder@local', workshop_id))
+            ''', (name, None, workshop_id))
 
             notify_bc, notify_caisse, notify_reg, notify_transfert, \
                 notify_consumption, notify_del, notify_exp = _parse_notification_form(request.form)

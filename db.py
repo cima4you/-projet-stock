@@ -246,7 +246,7 @@ def init_database():
             CREATE TABLE IF NOT EXISTS notification_recipients (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                email TEXT NOT NULL,
+                email TEXT DEFAULT '',
                 active INTEGER DEFAULT 1,
                 notify_achat_par_bc INTEGER DEFAULT 1,
                 notify_achat_par_caisse INTEGER DEFAULT 1,
@@ -279,7 +279,7 @@ def init_database():
         ''')
 
         # Migration: migrate existing emails to recipient_emails
-        existing = query('SELECT id, email, notify_achat_par_bc, notify_achat_par_caisse, notify_achat_a_regulariser, notify_transfert, notify_product_deletion, notify_product_expiration, notify_transfert_exit, notify_consumption FROM notification_recipients WHERE email != ""')
+        existing = query('SELECT id, email, notify_achat_par_bc, notify_achat_par_caisse, notify_achat_a_regulariser, notify_transfert, notify_product_deletion, notify_product_expiration, notify_transfert_exit, notify_consumption FROM notification_recipients WHERE email != "" AND email != "placeholder@local"')
         for row in existing:
             cnt = query_one('SELECT COUNT(*) FROM recipient_emails WHERE recipient_id = ? AND email = ?', (row[0], row[1]))
             if not cnt or cnt[0] == 0:
@@ -289,6 +289,15 @@ def init_database():
                         notify_product_expiration, notify_transfert_exit, notify_consumption)
                     VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]))
+
+        # Migration: drop NOT NULL on notification_recipients.email if needed
+        try:
+            cursor.execute("PRAGMA table_info(notification_recipients)")
+            cols = {row[1]: row for row in cursor.fetchall()}
+            if cols.get('email') and cols['email'][3]:  # notnull=1 means NOT NULL
+                cursor.execute("ALTER TABLE notification_recipients ALTER COLUMN email TEXT DEFAULT ''")
+        except Exception:
+            pass
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS notification_logs (
