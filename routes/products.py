@@ -435,11 +435,10 @@ def register_product_routes(app):
                 'p.brand', 'p.condition_status', 'p.chanter', 'p.storage_zone',
                 'p.notes', 'p.supplier_name', 'p.bc_number', 'p.bl_number',
                 'p.n_facture', 'p.type_achat', 'p.expiration_date',
-                'p.min_quantity', 'p.workshop_id', 'p.created_at', 'p.updated_at',
-                'p.created_by', 'p.deleted_at', 'p.image_path',
-                'u.username as created_by_username',
+                'p.min_quantity', 'w.name as workshop_name', 'p.created_at', 'p.updated_at',
+                'u.username as created_by_name', 'p.deleted_at', 'p.image_path',
             ]
-            q = f'SELECT {", ".join(export_cols)} FROM products p LEFT JOIN users u ON p.created_by = u.id WHERE p.deleted_at IS NULL'
+            q = f'SELECT {", ".join(export_cols)} FROM products p LEFT JOIN workshops w ON p.workshop_id = w.id LEFT JOIN users u ON p.created_by = u.id WHERE p.deleted_at IS NULL'
             params = []
             ws_clause, ws_params = workshop_filter('p')
             q += ws_clause
@@ -460,7 +459,7 @@ def register_product_routes(app):
                 'Notes', 'Nom Fournisseur', 'Numéro BC', 'Numéro BL',
                 'Numéro Facture', "Type d'Achat", "Date d'Expiration",
                 'Qté Min', 'Atelier', 'Créé le', 'Mis à jour le',
-                'ID Créateur', 'Supprimé le', 'Image', 'Créé par',
+                'Créé par', 'Supprimé le', 'Image',
             ]
 
 
