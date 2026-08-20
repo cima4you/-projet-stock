@@ -60,7 +60,7 @@
 | المسار | الطريقة | الصلاحية | الوصف |
 |---|---|---|---|
 | `/` | GET | عام | يوجّه إلى لوحة التحكم أو صفحة تسجيل الدخول |
-| `/login` | GET/POST | عام | تسجيل الدخول (حد أقصى 5 محاولات / 5 دقائق) |
+| `/login` | GET/POST | عام | تسجيل الدخول (حد أقصى 5 محاولات / 5 دقائق حسب عنوان IP) |
 | `/logout` | GET | عام | تسجيل الخروج |
 | `/change_language/<lang>` | GET | عام | موجود للتوافق فقط — يُجبر اللغة الفرنسية دائمًا |
 | `/forgot_password` | GET/POST | عام | إرسال رابط إعادة تعيين كلمة المرور |
@@ -83,8 +83,8 @@
 | `/products` | GET | `login_required` | قائمة المنتجات مع ترقيم الصفحات وفلاتر (تصنيف، بحث، نوع الشراء، مورد، منطقة تخزين، ماركة، تواريخ، ورشة) |
 | `/add_product` | GET/POST | `login_required` | إضافة منتج (ينشئ حركة دخول تلقائيًا إذا الكمية > 0) |
 | `/edit_product/<id>` | GET/POST | `admin_required` | تعديل منتج (المسؤولون فقط) |
-| `/delete_product/<id>` | GET | `admin_required` | أرشفة منتج (حذف ناعم `deleted_at`) |
-| `/restore_product/<id>` | GET | `admin_required` | استعادة منتج من الأرشيف |
+| `/delete_product/<id>` | POST | `admin_required` | أرشفة منتج (حذف ناعم `deleted_at`) — POST فقط + CSRF |
+| `/restore_product/<id>` | POST | `admin_required` | استعادة منتج من الأرشيف — POST فقط + CSRF |
 | `/archived_products` | GET | `admin_required` | قائمة المنتجات المؤرشفة |
 | `/import_products` | GET/POST | `login_required` | استيراد منتجات من ملف Excel |
 | `/import_errors` | GET | `login_required` | عرض أخطاء الاستيراد |
@@ -101,7 +101,7 @@
 | `/product_history/<id>` | GET | `login_required` | سجل حركات منتج مع رسم بياني لتطور المخزون |
 | `/add_movement` | GET/POST | `login_required` | إضافة حركة دخول/خروج (يحدّث كمية المنتج، يمنع خروج أكثر من المتاح) |
 | `/edit_movement/<id>` | GET/POST | `admin_required` | تعديل حركة (يعيد حساب كمية المنتج، حماية من رصيد سالب) |
-| `/delete_movement/<id>` | GET | `admin_required` | حذف حركة (يعيد حساب كمية المنتج) |
+| `/delete_movement/<id>` | POST | `admin_required` | حذف حركة (يعيد حساب كمية المنتج) — POST فقط + CSRF |
 | `/movement_reports` | GET | `login_required` | تقرير الحركات مع ملخص حسب النوع |
 | `/export_movements_excel` | GET | `login_required` | تصدير الحركات إلى Excel |
 
@@ -114,7 +114,7 @@
 | `/users` | GET | `admin_required` | قائمة المستخدمين |
 | `/add_user` | GET/POST | `admin_required` | إضافة مستخدم (لا يمكن إنشاء `principal_admin`) |
 | `/edit_user/<id>` | GET/POST | `principal_admin_required` | تعديل مستخدم (مع حماية من خفض/تعطيل الأدمن الرئيسي) |
-| `/delete_user/<id>` | GET | `admin_required` | حذف مستخدم (ممنوع حذف نفسك أو الأدمن الرئيسي) |
+| `/delete_user/<id>` | POST | `admin_required` | حذف مستخدم (ممنوع حذف نفسك أو الأدمن الرئيسي) — POST فقط + CSRF |
 
 ---
 
@@ -125,7 +125,7 @@
 | `/categories` | GET | `admin_required` | قائمة التصنيفات |
 | `/add_category` | POST | `admin_required` | إضافة تصنيف |
 | `/edit_category/<id>` | POST | `admin_required` | تعديل تصنيف |
-| `/delete_category/<id>` | GET | `admin_required` | حذف تصنيف |
+| `/delete_category/<id>` | POST | `admin_required` | حذف تصنيف — POST فقط + CSRF |
 
 ---
 
@@ -136,7 +136,7 @@
 | `/suppliers` | GET | `admin_required` | قائمة الموردين |
 | `/add_supplier` | POST | `admin_required` | إضافة مورد |
 | `/edit_supplier/<id>` | POST | `admin_required` | تعديل مورد |
-| `/delete_supplier/<id>` | GET | `admin_required` | حذف مورد |
+| `/delete_supplier/<id>` | POST | `admin_required` | حذف مورد — POST فقط + CSRF |
 
 ---
 
@@ -169,7 +169,7 @@
 | `/test_email` | GET | `admin_required` | إرسال بريد تجريبي |
 | `/add_recipient` | POST | `admin_required` | إضافة مستلم (مع عدة عناوين بريد) |
 | `/edit_recipient/<id>` | POST | `admin_required` | تعديل مستلم |
-| `/delete_email/<id>` | GET | `admin_required` | حذف بريد إلكتروني من مستلم |
+| `/delete_email/<id>` | POST | `admin_required` | حذف بريد إلكتروني من مستلم — POST فقط + CSRF |
 | `/check_expiring_products_manual` | GET | `admin_required` | فحص يدوي للمنتجات القاربة على الانتهاء وإرسال إشعار |
 
 أنواع الإشعارات: `achat_par_bc`، `achat_par_caisse`، `achat_a_regulariser`، `transfert`، `consommation`، حذف منتج، انتهاء صلاحية.
@@ -211,7 +211,7 @@
 | `/workshops` | GET | `admin_required` | قائمة الورشات (مع بحث) |
 | `/add_workshop` | GET/POST | `admin_required` | إضافة ورشة |
 | `/edit_workshop/<id>` | GET/POST | `admin_required` | تعديل ورشة |
-| `/delete_workshop/<id>` | GET | `admin_required` | حذف ورشة (ممنوع إذا عليها مستخدمون أو منتجات) |
+| `/delete_workshop/<id>` | POST | `admin_required` | حذف ورشة (ممنوع إذا عليها مستخدمون أو منتجات) — POST فقط + CSRF |
 | `/api/workshops` | GET | `login_required` | قائمة ورشات JSON (المسؤول يرى الكل، المستخدم يرى ورشته فقط) |
 | `/workshop_dashboard/<id>` | GET | `admin_required` | لوحة تحكم لورشة واحدة (إحصائيات، منتجات منخفضة، حركات) |
 | `/workshop_comparison` | GET | `admin_required` | مقارنة بين الورشات (جداول + رسوم بيانية) |
@@ -240,6 +240,7 @@
 | `notification_logs` | سجل الإشعارات المرسلة |
 | `audit_log` | سجل التدقيق (من فعل ماذا + تفاصيل قبل/بعد) |
 | `login_logs` | سجل الاتصالات (دخول/فشل/خروج، عنوان IP) |
+| `login_attempts` | عدّاد محاولات الدخول الفاشلة حسب IP (5/5 دقائق) |
 | `inventory_counts` | عمليات الجرد (نظري/فعلي/فرق) |
 | `workshops` | الورشات |
 

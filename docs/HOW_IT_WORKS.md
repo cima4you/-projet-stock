@@ -8,16 +8,16 @@
 
 يبدأ كل شيء من `main.py`:
 
-1. إنشاء `Flask` app مع إعدادات الجلسة (`SESSION_SECRET`).
+1. إنشاء `Flask` app مع إعدادات الجلسة (`SESSION_SECRET` إلزامي — `config.py` يرفض الإقلاع إن غاب).
 2. إنشاء المجلدات المطلوبة (uploads، static، templates...).
 3. `init_database()` من `db.py`:
-   - إنشاء الجداول إن لم تكن موجودة (users, products, stock_movements, audit_log, workshops...).
+   - إنشاء الجداول إن لم تكن موجودة (users, products, stock_movements, audit_log, login_attempts, workshops...).
    - تشغيل الترحيلات (Migration): إضافة أعمدة مفقودة مثل `workshop_id`, `deleted_at`, `min_quantity`, وتحويل `quantity` إلى `REAL` (كميات عشرية) في `products` و`stock_movements`.
    - إنشاء مستخدم أدمن افتراضي إن لم يوجد (`admin`).
 4. تفعيل حماية CSRF عبر `init_csrf(app)`.
 5. تسجيل كل الـ Blueprints عبر `register_blueprints(app)`.
 6. تشغيل `start_scheduler()` للمهام المجدولة (مثل التقرير اليومي).
-7. تشغيل الخادم على المنفذ **8050** وفتح المتصفح تلقائيًا.
+7. تشغيل الخادم على المنفذ **8050** (وضع التصحيح `debug` يعمل فقط مع `FLASK_DEBUG=1`).
 
 > قاعدة البيانات: SQLite محليًا (`stock.db`) — وعند توفّر `DATABASE_URL` يتحول تلقائيًا إلى PostgreSQL (لتشغيل Render). `db.py` يترجم `?` إلى `%s` و`AUTOINCREMENT` إلى `SERIAL` عند الحاجة.
 
@@ -27,16 +27,17 @@
 
 ```
 المستخدم → /login (POST)
+    ├─ الفحص: عنوان IP محظور (5 محاولات فاشلة خلال 5 دقائق)؟ → رفض + رسالة انتظار
     ├─ الفحص: مستخدم نشط؟ كلمة المرور صحيحة؟ (hash عبر werkzeug)
-    ├─ 5 محاولات خاطئة خلال 5 دقائق → رفض + رسالة انتظار
-    ├─ عند النجاح: تخزين الجلسة:
+    ├─ عند الفشل: تسجيل المحاولة في login_attempts + login_logs
+    ├─ عند النجاح: session.clear() (منع تثبيت الجلسة) ثم تخزين:
     │     user_id, username, role, workshop_id, workshop_name, lang ('fr')
     ├─ تحديث last_login في قاعدة البيانات
     └─ توجيه إلى /dashboard
 ```
 
 - جلسة `workshop_id` هي **مفتاح العزل**: كل الاستعلامات اللاحقة تَقيّد بها.
-- `/forgot_password` يولّد رمزًا آمنًا (`secrets.token_urlsafe`) صالحًا ساعة، ويرسل بريدًا عبر `send_password_reset_email`.
+- `/forgot_password` يولّد رمزًا آمنًا (`secrets.token_urlsafe`) صالحًا ساعة، يخزّن **بصمته SHA-256** في القاعدة (النص الصريح لا يُخزَّن)، ويرسل البريد عبر `send_password_reset_email`. زمن الاستجابة موحّد (مكافحة كشف الحسابات).
 - **الواجهة بالفرنسية فقط**: `/change_language/<lang>` موجود للتوافق فقط ويُجبر `lang = 'fr'` دائمًا — لا يوجد تبديل للغة في الواجهة.
 
 ---
@@ -163,14 +164,19 @@ cursor.execute('SELECT ... FROM products WHERE ...' + ws_clause, ws_params)
 | الطبقة | التفاصيل |
 |---|---|
 | كلمات المرور | مشفّرة بـ `werkzeug.generate_password_hash` — لا تُخزَّن نصًا |
-| الجلسة | `SESSION_SECRET` من `.env` |
-| CSRF | حماية عبر `csrf.py` |
-| تقييد المحاولات | 5 محاولات تسجيل دخول خاطئة / 5 دقائق |
+| سياسة كلمة المرور | 8 أحرف كحد أدنى + حروف + رقم + رمز خاص (`validate_password_strength` في `utils.py`) |
+| الجلسة | `SESSION_SECRET` **إلزامي** من `.env` (يوقف التطبيق إن غاب) — كوكي `HttpOnly` + `SameSite=Lax` |
+| CSRF | حماية عبر `csrf.py` — **كل عمليات الحذف/الاستعادة POST فقط** (الروابط المباشرة GET ترد 405) |
+| تقييد المحاولات | 5 محاولات فاشلة / 5 دقائق **حسب عنوان IP** (جدول `login_attempts`، وليس كوكي العميل) |
+| المستخدم المعطَّل | الديكورات تعيد قراءة `active` من القاعدة مع كل طلب → طرد فوري |
+| رمز إعادة التعيين | `reset_token` مخزَّن **بصيغة SHA-256** (النص الصريح لا يُخزَّن أبدًا) + انتهاء بعد ساعة + مسح الجلسة بعد التغيير |
 | الأدوار | ديكورات `login_required` / `admin_required` / `principal_admin_required` |
-| رفع الملفات | التحقق من الامتدادات (`allowed_file`) + حد أقصى 16MB |
+| رفع الملفات | التحقق من الامتدادات + **فحص توقيع المحتوى** (`PK`/OLE2) + حد أقصى 16MB |
 | الاستيراد | `secure_filename` + حذف الملف بعد المعالجة |
-| رمز Cron | `CRON_SECRET` للتحقق من النقطة الزمنية |
+| رؤوس الأمان | `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` + `HSTS` عند `SECURE_COOKIE=1` |
+| رمز Cron | `CRON_SECRET` **إلزامي** للتحقق من النقطة الزمنية |
 | حماية الأدمن الرئيسي | لا يمكن إنشاء/حذف/تعطيل/تغيير كلمة مرور `principal_admin` |
+| تشفير `.env` | `python protect_env.py encrypt` → `.env.encrypted` + `.env.salt` (يُفك تلقائيًا عند الإقلاع عبر `ENV_PASSWORD` أو طلب إدخال) |
 
 ---
 
@@ -186,7 +192,9 @@ Flask app → Blueprints (routes/) → db.py (SQLite/PostgreSQL) + utils.py (ص�
 
 ## 13) التطوير والنشر
 
-- **محليًا**: `python main.py` → `http://127.0.0.1:8050`
+- **محليًا**: `python main.py` → `http://127.0.0.1:8050` (يتطلب `SESSION_SECRET` و`CRON_SECRET` في `.env`)
 - **التبعيات**: `uv sync` أو `pip install -r requirements.txt`
-- **التشفير**: `python protect_env.py` يشفر `.env` إلى `.env.encrypted`
+- **التشفير**: `python protect_env.py encrypt` يشفر `.env` إلى `.env.encrypted` + `.env.salt` — ثم حذف `.env` العادي؛ عند الإقلاع يُفك تلقائيًا عبر `ENV_PASSWORD` أو طلب إدخال كلمة المرور
+- **وضع التصحيح**: `FLASK_DEBUG=1` لتفعيل `debug` (مغلق افتراضيًا في الإنتاج)
+- **الكوكي الآمن**: `SECURE_COOKIE=1` لتفعيل `Secure` + HSTS (للاستخدام مع HTTPS)
 - **الإنتاج (Render)**: `render.yaml` ينشئ Web Service + PostgreSQL تلقائيًا، وبيئة الإنتاج تكشف PostgreSQL عبر `DATABASE_URL` ويترجم `db.py` الاستعلامات تلقائيًا.

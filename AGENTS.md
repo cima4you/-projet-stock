@@ -7,16 +7,16 @@ Système de Gestion de Stock (Stock Management System) - a French-language Flask
 ## Tech Stack
 
 - **Backend:** Python 3.11+, Flask 3.1
-- **Database:** SQLite (via Flask-SQLAlchemy)
+- **Database:** SQLite (raw `sqlite3` via `db.py`, auto-switches to PostgreSQL via `DATABASE_URL`)
 - **Frontend:** Bootstrap 5, Font Awesome 6, Jinja2 templates
 - **Package Manager:** uv
-- **Production Server:** gunicorn
+- **Production Server:** gunicorn (Render) / WSGI (PythonAnywhere)
 
 ## Key Commands
 
 - **Run app:** `python main.py` (starts on port 8050)
 - **Install deps:** `uv sync` or `pip install -r requirements.txt`
-- **Encrypt .env:** `python protect_env.py`
+- **Encrypt .env:** `python protect_env.py encrypt` (→ `.env.encrypted` + `.env.salt`); `decrypt`/`unlock` to restore/test
 - **Database:** SQLite file `stock.db`
 
 ## Multi-Workshop Architecture
@@ -28,9 +28,23 @@ Flow:
 2. All data routes call `workshop_filter()` to append `AND workshop_id = ?` to SQL queries
 3. Notification functions filter recipients by `workshop_id` parameter
 
-**Important index notes for `SELECT * FROM users`:**
-After ALTER TABLE workshop_id was added as the last column, column indices are:
+**Important index notes for `SELECT * FROM users` (legacy, being phased out):**
+If code still uses `SELECT *` + positional indexes, after ALTER TABLE workshop_id was added as the last column:
 - `user[1]` = username, `user[3]` = email, `user[4]` = role, `user[5]` = active, `user[10]` = workshop_id
+**Prefer explicit column lists + named access (row factory) in new code.**
+
+## Security Hardening (applied 2026-08)
+
+- **CSRF on all destructive actions:** delete/restore routes are `POST`-only (`delete_category`, `delete_email`, `delete_movement`, `delete_product`, `restore_product`, `delete_supplier`, `delete_user`, `delete_workshop`). GET requests return 405.
+- **Mandatory secrets:** `SESSION_SECRET` and `CRON_SECRET` have NO fallback — `config.py` raises `RuntimeError` at startup if missing from `.env`.
+- **Debug off by default:** `main.py` uses `FLASK_DEBUG=1` env var only (production-safe otherwise).
+- **Active-user check:** `login_required`/`admin_required`/`principal_admin_required` re-read `role, active` from DB on every request; deactivated users are logged out immediately.
+- **IP-based login lockout:** `login_attempts` table — 5 failures / 5 min per IP (no longer client-side session cookie).
+- **Hashed reset tokens:** `reset_token` stored as SHA-256; email carries the plain token.
+- **Password policy:** min 8 chars + letters + digit + special char (shared `validate_password_strength()` in `utils.py`).
+- **Security headers:** `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, plus HSTS when `SECURE_COOKIE=1`. Session cookie `HttpOnly` + `SameSite=Lax`.
+- **Excel upload validation:** `validate_excel_content()` checks file magic bytes (`PK`/OLE2), not just extension.
+- **`.env` encryption:** `python protect_env.py encrypt` → `.env.encrypted` + `.env.salt`; delete plain `.env` afterwards. `config.py` auto-loads encrypted file (needs `ENV_PASSWORD` env var or prompt).
 
 ## Project Structure
 
@@ -80,7 +94,9 @@ Each blueprint is registered in `routes/__init__.py`. Main routes:
 - Roles: `user`, `admin`, `principal_admin`
 - Default admin: created from `DEFAULT_ADMIN_USERNAME`/`DEFAULT_ADMIN_PASSWORD` env vars (see `config.py`); change the password after first login
 - Password hashing via Werkzeug
-- CSRF protection enabled
+- CSRF protection enabled (`csrf.py`, `init_csrf(app)`)
+- **Login lockout:** 5 failed attempts / 5 min per IP (table `login_attempts`)
+- **Password policy:** min 8 chars + letter + digit + special char
 
 ## Notifications
 
