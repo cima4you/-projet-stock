@@ -236,7 +236,7 @@ def register_movement_routes(app):
                             workshop_id=session.get('workshop_id'))
 
                 log_audit('create', 'movement', cursor.lastrowid,
-                          f"Mouvement {movement_type} de {quantity} pour produit #{product_id}")
+                          f"Mouvement {movement_type} de {quantity} pour produit {product_row['code']} - {product_row['name']}")
                 flash(get_translation('movement_added_successfully'), 'success')
                 return redirect(url_for('movements'))
             except Exception as e:
@@ -349,7 +349,7 @@ def register_movement_routes(app):
                 if not movement:
                     flash("Mouvement introuvable", 'error')
                     return redirect(url_for('movements'))
-                cursor.execute('SELECT quantity FROM products WHERE id = ?', (movement['product_id'],))
+                cursor.execute('SELECT quantity, code, name FROM products WHERE id = ?', (movement['product_id'],))
                 prod = cursor.fetchone()
                 if not prod:
                     flash("Produit introuvable", 'error')
@@ -362,7 +362,7 @@ def register_movement_routes(app):
                 cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
                               (new_stock, movement['product_id']))
                 log_audit('delete', 'movement', movement_id,
-                          f"Suppression du mouvement #{movement_id} ({movement['movement_type']} {movement['quantity']})")
+                          f"Suppression du mouvement #{movement_id} ({movement['movement_type']} {movement['quantity']}) produit {prod['code']} - {prod['name']}")
             flash("Mouvement supprimé avec succès", 'success')
         except Exception as e:
             logger.error(f"Error deleting movement: {e}")
