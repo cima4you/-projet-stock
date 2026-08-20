@@ -35,7 +35,11 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="product_id" class="form-label">{{ translations.select_product }} *</label>
-                                    <input type="text" class="form-control" value="{{ product[1] }} - {{ product[2] }} (ID: {{ movement['product_id'] }})" disabled>
+                                    <select class="form-select" id="product_id" name="product_id" required>
+                                        {% for p in products %}
+                                        <option value="{{ p['id'] }}" {% if p['id'] == current_product_id %}selected{% endif %}>{{ p['code'] }} - {{ p['name'] }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
