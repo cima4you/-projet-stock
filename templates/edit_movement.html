@@ -34,27 +34,20 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="product_id" class="form-label">{{ translations.select_product }} *</label>
-                                    <select class="form-select" id="product_id" name="product_id" required>
-                                        {% for p in products %}
-                                        <option value="{{ p['id'] }}" {% if p['id'] == current_product_id %}selected{% endif %}>{{ p['code'] }} - {{ p['name'] }}</option>
-                                        {% endfor %}
-                                    </select>
+                                    <label class="form-label">{{ translations.select_product }}</label>
+                                    <input type="text" class="form-control" value="{{ current_product_code }} - {{ current_product_name }}" disabled>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="movement_type" class="form-label">{{ translations.movement_type }} *</label>
-                                    <select class="form-select" id="movement_type" name="movement_type" required>
-                                        <option value="entry" {% if movement['movement_type'] == 'entry' %}selected{% endif %}>{{ translations.entry }}</option>
-                                        <option value="exit" {% if movement['movement_type'] == 'exit' %}selected{% endif %}>{{ translations.exit }}</option>
-                                    </select>
+                                    <label class="form-label">{{ translations.movement_type }}</label>
+                                    <input type="text" class="form-control" value="{% if movement['movement_type'] == 'entry' %}{{ translations.entry }}{% else %}{{ translations.exit }}{% endif %}" disabled>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="quantity" class="form-label">{{ translations.movement_quantity }} *</label>
-                                    <input type="number" class="form-control" id="quantity" name="quantity" min="1" step="any" value="{{ movement['quantity'] }}" required>
+                                    <label class="form-label">{{ translations.movement_quantity }}</label>
+                                    <input type="text" class="form-control" value="{{ movement['quantity'] }}" disabled>
                                 </div>
                             </div>
                             <div class="col-md-6">

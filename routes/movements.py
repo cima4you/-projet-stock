@@ -259,9 +259,6 @@ def register_movement_routes(app):
             cursor = conn.cursor()
             if request.method == 'POST':
                 try:
-                    new_product_id = int(request.form['product_id'])
-                    movement_type = request.form['movement_type']
-                    quantity = parse_quantity(request.form['quantity'])
                     notes = request.form.get('notes', '').strip()
                     supplier_name = request.form.get('supplier_name', '').strip()
                     bc_number = request.form.get('bc_number', '').strip()
@@ -279,69 +276,19 @@ def register_movement_routes(app):
                     if not old:
                         flash("Mouvement introuvable", 'error')
                         return redirect(url_for('movements'))
-                    old_type, old_qty = old['movement_type'], old['quantity']
-                    old_product_id = old['product_id']
-
-                    contrib = lambda t, q: q if t == 'entry' else -q
-
-                    if new_product_id != old_product_id:
-                        cursor.execute('SELECT quantity FROM products WHERE id = ?', (old_product_id,))
-                        old_prod = cursor.fetchone()
-                        if not old_prod:
-                            flash("Ancien produit introuvable", 'error')
-                            return redirect(url_for('movements'))
-                        revert_stock = old_prod['quantity'] - contrib(old_type, old_qty)
-                        if revert_stock < 0:
-                            flash("Stock insuffisant : la correction ferait passer l'ancien produit en négatif", 'error')
-                            return redirect(url_for('edit_movement', movement_id=movement_id))
-
-                        cursor.execute('SELECT quantity FROM products WHERE id = ?', (new_product_id,))
-                        new_prod = cursor.fetchone()
-                        if not new_prod:
-                            flash("Nouveau produit introuvable", 'error')
-                            return redirect(url_for('edit_movement', movement_id=movement_id))
-                        add_stock = new_prod['quantity'] + contrib(movement_type, quantity)
-                        if add_stock < 0:
-                            flash("Stock insuffisant : la correction ferait passer le nouveau produit en négatif", 'error')
-                            return redirect(url_for('edit_movement', movement_id=movement_id))
-
-                        cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-                                      (revert_stock, old_product_id))
-                        cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-                                      (add_stock, new_product_id))
-                    else:
-                        cursor.execute('SELECT quantity FROM products WHERE id = ?', (old_product_id,))
-                        prod = cursor.fetchone()
-                        if not prod:
-                            flash("Produit introuvable", 'error')
-                            return redirect(url_for('movements'))
-                        new_stock = prod['quantity'] + contrib(movement_type, quantity) - contrib(old_type, old_qty)
-                        if new_stock < 0:
-                            flash("Stock insuffisant : la correction ferait passer la quantité du produit en négatif", 'error')
-                            return redirect(url_for('edit_movement', movement_id=movement_id))
-                        cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-                                      (new_stock, old_product_id))
 
                     cursor.execute('''
-                        UPDATE stock_movements SET product_id=?, movement_type=?, quantity=?, notes=?,
+                        UPDATE stock_movements SET notes=?,
                                                   supplier_name=?, bc_number=?, bl_number=?, n_facture=?,
                                                   type_achat=?, chantier_exp_recep=?, nom_donneur_ordre=?,
                                                   nom_magasinier=?, nom_chauffeur=?, matricule=?
                         WHERE id=?
-                    ''', (new_product_id, movement_type, quantity, notes, supplier_name, bc_number, bl_number,
+                    ''', (notes, supplier_name, bc_number, bl_number,
                           n_facture, type_achat, chantier_exp_recep, nom_donneur_ordre,
                           nom_magasinier, nom_chauffeur, matricule, movement_id))
 
-                    cursor.execute('SELECT code, name FROM products WHERE id = ?', (old_product_id,))
-                    old_prod_info = cursor.fetchone()
-                    cursor.execute('SELECT code, name FROM products WHERE id = ?', (new_product_id,))
-                    new_prod_info = cursor.fetchone()
-
                     old_values = {k: old[k] for k in old.keys()}
                     new_values = {
-                        'product_id': new_product_id,
-                        'movement_type': movement_type,
-                        'quantity': quantity,
                         'notes': notes,
                         'supplier_name': supplier_name,
                         'bc_number': bc_number,
@@ -355,9 +302,6 @@ def register_movement_routes(app):
                         'matricule': matricule,
                     }
                     labels = {
-                        'product_id': 'Produit',
-                        'movement_type': 'Type',
-                        'quantity': 'Quantité',
                         'notes': 'Notes',
                         'supplier_name': 'Fournisseur',
                         'bc_number': 'N° BC',
@@ -370,10 +314,6 @@ def register_movement_routes(app):
                         'nom_chauffeur': 'Chauffeur',
                         'matricule': 'Matricule',
                     }
-                    if old_prod_info and new_prod_info:
-                        old_values['product_id'] = f"{old_prod_info['code']} - {old_prod_info['name']}"
-                        new_values['product_id'] = f"{new_prod_info['code']} - {new_prod_info['name']}"
-
                     details = build_change_details(f"Correction du mouvement #{movement_id}",
                                                    old_values, new_values, labels)
                     log_audit('update', 'movement', movement_id, details)
@@ -389,12 +329,12 @@ def register_movement_routes(app):
                 flash("Mouvement introuvable", 'error')
                 return redirect(url_for('movements'))
 
-            ws_clause, ws_params = workshop_filter()
-            cursor.execute('SELECT id, code, name FROM products WHERE deleted_at IS NULL' + ws_clause + ' ORDER BY name', ws_params)
-            products_list = cursor.fetchall()
+            cursor.execute('SELECT code, name FROM products WHERE id = ?', (movement['product_id'],))
+            product = cursor.fetchone()
 
-        return render_template('edit_movement.html', movement=movement, products=products_list,
-                             current_product_id=movement['product_id'],
+        return render_template('edit_movement.html', movement=movement,
+                             current_product_code=product['code'] if product else '',
+                             current_product_name=product['name'] if product else '',
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
