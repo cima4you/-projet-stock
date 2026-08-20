@@ -363,6 +363,7 @@ def init_database():
         _categories_table(cursor)
         _suppliers_table(cursor)
         _add_missing_columns(cursor)
+        _fix_audit_log_product_names(cursor)
         _create_default_admin(cursor)
 
 
@@ -515,6 +516,39 @@ def _make_quantity_decimal(cursor):
             cursor.execute(sql)
         except Exception:
             pass
+
+
+def _fix_audit_log_product_names(cursor):
+    """Replace 'produit #<id>' with 'produit <code> - <name>' in old audit_log entries."""
+    import re
+    like_pattern = '%produit #%'
+    if IS_POSTGRES:
+        cursor.execute("SELECT id, details FROM audit_log WHERE details LIKE %s", (like_pattern,))
+    else:
+        cursor.execute("SELECT id, details FROM audit_log WHERE details LIKE ?", (like_pattern,))
+    rows = cursor.fetchall()
+    if not rows:
+        return
+    id_map = {}
+    for row in rows:
+        rid = row[0] if not hasattr(row, 'keys') else row['id']
+        details = row[1] if not hasattr(row, 'keys') else row['details']
+        matches = re.findall(r'produit #(\d+)', details)
+        for pid_str in matches:
+            pid = int(pid_str)
+            if pid not in id_map:
+                if IS_POSTGRES:
+                    cursor.execute("SELECT code, name FROM products WHERE id = %s", (pid,))
+                else:
+                    cursor.execute("SELECT code, name FROM products WHERE id = ?", (pid,))
+                p = cursor.fetchone()
+                id_map[pid] = f"{p['code']} - {p['name']}" if p else f"produit #{pid}"
+            details = details.replace(f'produit #{pid_str}', f'produit {id_map[pid]}')
+        if IS_POSTGRES:
+            cursor.execute("UPDATE audit_log SET details = %s WHERE id = %s", (details, rid))
+        else:
+            cursor.execute("UPDATE audit_log SET details = ? WHERE id = ?", (details, rid))
+    logger.info(f"Fixed {len(rows)} audit_log entries with product names")
 
 
 def _rebuild_products_uniqueness(cursor):
