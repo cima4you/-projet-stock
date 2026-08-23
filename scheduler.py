@@ -1,8 +1,11 @@
 import logging
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
+REPORT_TIMEZONE = 'Africa/Casablanca'
+
 scheduler = BackgroundScheduler()
 
 
@@ -41,11 +44,14 @@ def start_scheduler():
     from notifications import check_expiring_products, send_expiring_products_notification, send_daily_report_if_not_sent
 
     scheduler.add_job(check_expiry_job, 'interval', hours=6, id='check_expiry', replace_existing=True)
-    scheduler.add_job(daily_report_job, 'interval', hours=24, id='daily_report', replace_existing=True)
+    scheduler.add_job(daily_report_job, CronTrigger(hour=19, minute=0, timezone=REPORT_TIMEZONE),
+                      id='daily_report', replace_existing=True)
+    scheduler.add_job(daily_report_job, CronTrigger(hour=20, minute=30, timezone=REPORT_TIMEZONE),
+                      id='daily_report_retry', replace_existing=True)
     scheduler.add_job(check_low_stock_job, 'interval', hours=6, id='check_low_stock', replace_existing=True)
 
     scheduler.start()
-    logger.info("APScheduler started successfully (expiry: 6h, report: 24h, low stock: 6h)")
+    logger.info(f"APScheduler started successfully (expiry: 6h, report: daily 19:00 + retry 20:30 {REPORT_TIMEZONE}, low stock: 6h)")
 
     try:
         logger.info("Sending daily report on startup...")

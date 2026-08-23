@@ -471,12 +471,20 @@ def send_daily_report_if_not_sent(recipient_emails=None):
 
     try:
         today_str = datetime.now().strftime('%Y-%m-%d')
-        existing = query_one('''
-            SELECT COUNT(*) as cnt FROM notification_logs
-            WHERE notification_type = 'daily_report' AND DATE(sent_at) = ?
-        ''', (today_str,))
-        if existing and existing['cnt'] > 0:
-            logger.info("Daily report already sent today. Skipping.")
+
+        pending = []
+        for recipient_email in recipient_emails:
+            already = query_one('''
+                SELECT COUNT(*) as cnt FROM notification_logs
+                WHERE notification_type = 'daily_report' AND DATE(sent_at) = ?
+                AND status = 'sent' AND recipient_email = ?
+            ''', (today_str, recipient_email))
+            if already and already['cnt'] > 0:
+                logger.info(f"Daily report already sent successfully to {recipient_email} today. Skipping this recipient.")
+            else:
+                pending.append(recipient_email)
+        if not pending:
+            logger.info("Daily report already sent today to all recipients. Skipping.")
             return False
 
         logger.info("Generating daily report...")
@@ -488,7 +496,7 @@ def send_daily_report_if_not_sent(recipient_emails=None):
         subject = f"Rapport quotidien - {today_str}"
         body = f"Bonjour,\nVeuillez trouver ci-joint les rapports quotidiens pour la date du {today_str}.\nCordialement,\nLe Système de Gestion de Stock"
 
-        for recipient_email in recipient_emails:
+        for recipient_email in pending:
             try:
                 msg = MIMEMultipart()
                 msg['From'] = EMAIL_ADDRESS
