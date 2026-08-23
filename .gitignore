@@ -1,6 +1,7 @@
 # Environment (real secrets - local only)
 .env
 .env.salt
+.env.encrypted
 
 # Python cache
 __pycache__/
