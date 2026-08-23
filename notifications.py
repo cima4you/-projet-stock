@@ -44,9 +44,6 @@ def send_email(to_email: str, subject: str, body: str, html_body: Optional[str] 
             logo_path = None
 
         msg = MIMEMultipart('related') if (logo_path and html_body) else MIMEMultipart('alternative')
-        msg['From'] = EMAIL_ADDRESS
-        msg['To'] = to_email
-        msg['Subject'] = subject
 
         alt = MIMEMultipart('alternative')
         alt.attach(MIMEText(body, 'plain', 'utf-8'))
@@ -62,6 +59,10 @@ def send_email(to_email: str, subject: str, body: str, html_body: Optional[str] 
                 msg.attach(logo_img)
         else:
             msg = alt
+
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = to_email
+        msg['Subject'] = subject
 
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
