@@ -301,7 +301,7 @@ def register_movement_routes(app):
                             flash("Modification impossible : le stock du produit deviendrait négatif", 'error')
                             return redirect(url_for('movements'))
                         cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
-                                      (new_stock, prod['id']))
+                                      (new_stock, old['product_id']))
 
                     cursor.execute('''
                         UPDATE stock_movements SET quantity=?, notes=?,
