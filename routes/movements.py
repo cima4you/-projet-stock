@@ -259,6 +259,8 @@ def register_movement_routes(app):
             cursor = conn.cursor()
             if request.method == 'POST':
                 try:
+                    role = session.get('role')
+                    is_admin = role in ('admin', 'principal_admin')
                     notes = request.form.get('notes', '').strip()
                     supplier_name = request.form.get('supplier_name', '').strip()
                     bc_number = request.form.get('bc_number', '').strip()
@@ -277,18 +279,43 @@ def register_movement_routes(app):
                         flash("Mouvement introuvable", 'error')
                         return redirect(url_for('movements'))
 
+                    new_quantity = old['quantity']
+                    if is_admin:
+                        try:
+                            new_quantity = parse_quantity(request.form.get('quantity', old['quantity']))
+                        except (TypeError, ValueError):
+                            new_quantity = old['quantity']
+                        if new_quantity < 0:
+                            new_quantity = old['quantity']
+
+                    if new_quantity != old['quantity']:
+                        cursor.execute('SELECT quantity, code, name FROM products WHERE id = ?', (old['product_id'],))
+                        prod = cursor.fetchone()
+                        if not prod:
+                            flash("Produit introuvable", 'error')
+                            return redirect(url_for('movements'))
+                        qty_diff = new_quantity - old['quantity']
+                        sign = 1 if old['movement_type'] == 'entry' else -1
+                        new_stock = prod['quantity'] + sign * qty_diff
+                        if new_stock < 0:
+                            flash("Modification impossible : le stock du produit deviendrait négatif", 'error')
+                            return redirect(url_for('movements'))
+                        cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+                                      (new_stock, prod['id']))
+
                     cursor.execute('''
-                        UPDATE stock_movements SET notes=?,
+                        UPDATE stock_movements SET quantity=?, notes=?,
                                                   supplier_name=?, bc_number=?, bl_number=?, n_facture=?,
                                                   type_achat=?, chantier_exp_recep=?, nom_donneur_ordre=?,
                                                   nom_magasinier=?, nom_chauffeur=?, matricule=?
                         WHERE id=?
-                    ''', (notes, supplier_name, bc_number, bl_number,
+                    ''', (new_quantity, notes, supplier_name, bc_number, bl_number,
                           n_facture, type_achat, chantier_exp_recep, nom_donneur_ordre,
                           nom_magasinier, nom_chauffeur, matricule, movement_id))
 
                     old_values = {k: old[k] for k in old.keys()}
                     new_values = {
+                        'quantity': new_quantity,
                         'notes': notes,
                         'supplier_name': supplier_name,
                         'bc_number': bc_number,
@@ -302,6 +329,7 @@ def register_movement_routes(app):
                         'matricule': matricule,
                     }
                     labels = {
+                        'quantity': 'Quantité',
                         'notes': 'Notes',
                         'supplier_name': 'Fournisseur',
                         'bc_number': 'N° BC',

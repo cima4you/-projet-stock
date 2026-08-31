@@ -46,8 +46,9 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">{{ translations.movement_quantity }}</label>
-                                    <input type="text" class="form-control" value="{{ movement['quantity'] }}" disabled>
+                                    <label for="quantity" class="form-label">{{ translations.movement_quantity }}</label>
+                                    <input type="number" class="form-control" id="quantity" name="quantity" min="0" step="any" value="{{ movement['quantity'] }}" {% if session.role not in ['admin', 'principal_admin'] %}disabled{% endif %}>
+                                    {% if session.role in ['admin', 'principal_admin'] %}<div class="form-text">Modifiez la quantité : le stock du produit sera ajusté automatiquement.</div>{% endif %}
                                 </div>
                             </div>
                             <div class="col-md-6">
