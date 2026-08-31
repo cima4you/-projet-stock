@@ -71,8 +71,8 @@
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="quantity" class="form-label">{{ translations.quantity }}</label>
-                                    <input type="number" class="form-control" id="quantity" name="quantity" value="{{ product['quantity'] }}" readonly>
-                                    <div class="form-text">Modifiez la quantité via les mouvements de stock</div>
+                                    <input type="number" class="form-control" id="quantity" name="quantity" value="{{ product['quantity'] }}" min="0" step="any" {% if session.role not in ['admin', 'principal_admin'] %}readonly{% endif %}>
+                                    {% if session.role not in ['admin', 'principal_admin'] %}<div class="form-text">Modifiez la quantité via les mouvements de stock</div>{% endif %}
                                 </div>
                             </div>
                             <div class="col-md-4">

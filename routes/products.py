@@ -218,10 +218,12 @@ def register_product_routes(app):
                     type_achat = request.form.get('type_achat', '').strip()
                     expiration_date = request.form.get('expiration_date', None) or None
                     min_quantity = parse_quantity(request.form.get('min_quantity', 0))
+                    quantity = parse_quantity(request.form.get('quantity', product['quantity']))
 
                     if not is_admin:
                         code = product['code']
                         name = product['name']
+                        quantity = product['quantity']
 
                     ws_id = session.get('workshop_id')
                     cursor.execute('SELECT id FROM products WHERE code = ? AND id != ? AND (workshop_id = ? OR (workshop_id IS NULL AND ? IS NULL))',
@@ -234,12 +236,12 @@ def register_product_routes(app):
                         UPDATE products SET code=?, name=?, category=?, unit=?, brand=?,
                                           condition_status=?, chanter=?, storage_zone=?, notes=?,
                                           supplier_name=?, bc_number=?, bl_number=?, n_facture=?,
-                                          type_achat=?, expiration_date=?, min_quantity=?,
+                                          type_achat=?, expiration_date=?, min_quantity=?, quantity=?,
                                           updated_at=CURRENT_TIMESTAMP
                         WHERE id=?
                     ''', (code, name, category, unit, brand, condition_status, chanter, storage_zone,
                           notes, supplier_name, bc_number, bl_number, n_facture, type_achat,
-                          expiration_date, min_quantity, product_id))
+                          expiration_date, min_quantity, quantity, product_id))
                     new_values = {
                         'code': code, 'name': name, 'category': category, 'unit': unit,
                         'brand': brand, 'condition_status': condition_status,
@@ -247,7 +249,7 @@ def register_product_routes(app):
                         'supplier_name': supplier_name, 'bc_number': bc_number,
                         'bl_number': bl_number, 'n_facture': n_facture,
                         'type_achat': type_achat, 'expiration_date': expiration_date,
-                        'min_quantity': min_quantity,
+                        'min_quantity': min_quantity, 'quantity': quantity,
                     }
                     labels = {
                         'code': 'Code', 'name': 'Nom', 'category': 'Catégorie', 'unit': 'Unité',
@@ -256,7 +258,7 @@ def register_product_routes(app):
                         'supplier_name': 'Fournisseur', 'bc_number': 'N° BC',
                         'bl_number': 'N° BL', 'n_facture': 'N° Facture',
                         'type_achat': "Type d'achat", 'expiration_date': 'Date expiration',
-                        'min_quantity': 'Qté min',
+                        'min_quantity': 'Qté min', 'quantity': 'Quantité',
                     }
                     details = build_change_details(f"Mise à jour du produit {code} - {name}",
                                                    {k: product[k] for k in product.keys()},
