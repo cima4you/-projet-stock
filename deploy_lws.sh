@@ -13,7 +13,7 @@ echo "============================================"
 # ---------- Config ----------
 APP_DIR="/var/www/projet_stock"
 GIT_URL="https://github.com/cima4you/-projet-stock.git"
-DOMAIN="${DOMAIN:-stock.exemple.fr}"        # CHANGEZ-MOI
+DOMAIN="${DOMAIN:-stock-engor.fr}"
 
 echo ""
 echo "[1/7] Mise à jour du système..."
