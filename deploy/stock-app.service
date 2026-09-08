@@ -1,0 +1,15 @@
+[Unit]
+Description=projet_stock Flask (Gunicorn)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/projet_stock
+EnvironmentFile=/var/www/projet_stock/.env
+ExecStart=/var/www/projet_stock/venv/bin/gunicorn main:app --bind 127.0.0.1:8050 --workers 1 --timeout 120
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
