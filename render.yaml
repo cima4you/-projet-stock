@@ -17,6 +17,8 @@ services:
           property: connectionString
       - key: SESSION_SECRET
         generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
       - key: EMAIL_ADDRESS
         value: ""
       - key: EMAIL_PASSWORD
