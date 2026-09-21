@@ -38,23 +38,17 @@
 ### Rapport quotidien
 1. **cron-job.org** appelle à 19:00 : `/cron/daily-report?token=...` → `routes/cron.py`.
 2. `notifications.py:535` `send_daily_report_if_not_sent()` :
-   - Vérifie `notification_logs` : si une ligne `daily_report` existe pour `DATE(sent_at)=date('now')` → **skip** (Already sent today).
-   - Sinon génère 4 pièces jointes (rapport_produits.xlsx/pdf + rapport_mouvements.xlsx/pdf) et les envoie à **chacun** des `DAILY_REPORT_RECIPIENTS`.
+   - Destinataires groupés **par atelier** depuis `notification_recipients` + `recipient_emails` (gestion via `/email_management`). Un destinataire avec `workshop_id = NULL` (« Tous les ateliers ») reçoit le rapport global de toutes les ateliers.
+   - Anti-doublon par destinataire/atelier/jour (`notification_logs`, `status='sent'`, même `subject`).
+   - Génère 4 pièces jointes (rapport_produits.xlsx/pdf + rapport_mouvements.xlsx/pdf) **filtrées par atelier** (`p.workshop_id` / `sm.workshop_id`) et les envoie aux destinataires du groupe.
 3. Chaque destinataire reçoit SA propre copie dans SON boîte mail (pas de copie visible chez l'expéditeur).
 
 ---
 
 ## 3. Destinataires du rapport quotidien
 
-- **Définition** : `config.py:70` `DAILY_REPORT_RECIPIENTS` lu depuis la variable d'env `.env` (`DAILY_REPORT_RECIPIENTS`, séparée par virgules).
-- **IMPORTANT** : `config.py` est chargé **une seule fois au démarrage**. Après modification de `.env` → **Reload** obligatoire.
-- **Liste actuelle (6)** :
-  1. bazigherachid@gmail.com
-  2. rbazighe@gmail.com
-  3. hmiddouchhamza@gmail.com
-  4. younesghazzali1995@gmail.com
-  5. mohammed.chabli@engor.net
-  6. yassinenaitoufqir@gmail.com
+- **Depuis 2026-09-21** : les destinataires sont définis dans `/email_management` (table `notification_recipients`), chacun lié à un atelier précis ou à « Tous les ateliers ». La liste `.env` `DAILY_REPORT_RECIPIENTS` n'est **plus utilisée** pour le rapport quotidien.
+- **IMPORTANT** : les destinataires doivent être déclarés avec leur atelier via l'écran « Gestion des Notifications », sinon ils ne recevront aucun rapport.
 
 ---
 

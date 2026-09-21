@@ -1,4 +1,5 @@
 import os
+import re
 import smtplib
 import logging
 import xlsxwriter
@@ -340,9 +341,12 @@ def _add_logo_pdf(pdf):
         pdf.image(logo_path, x=10, y=8, w=30)
 
 
-def _generate_products_pdf() -> BytesIO:
+def _generate_products_pdf(workshop_id=None) -> BytesIO:
     from fpdf import FPDF
-    rows = query('SELECT * FROM products WHERE deleted_at IS NULL ORDER BY name')
+    if workshop_id:
+        rows = query('SELECT * FROM products WHERE deleted_at IS NULL AND workshop_id = ? ORDER BY name', (workshop_id,))
+    else:
+        rows = query('SELECT * FROM products WHERE deleted_at IS NULL ORDER BY name')
     pdf = FPDF(orientation='L')
     pdf.add_page()
     _add_logo_pdf(pdf)
@@ -397,18 +401,31 @@ def _generate_products_pdf() -> BytesIO:
     return buf
 
 
-def _generate_movements_pdf() -> BytesIO:
+def _generate_movements_pdf(workshop_id=None) -> BytesIO:
     from fpdf import FPDF
-    rows = query('''
-        SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
-               u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
-               sm.n_facture, sm.type_achat, sm.chantier_exp_recep,
-               sm.nom_donneur_ordre, sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
-        FROM stock_movements sm
-        JOIN products p ON sm.product_id = p.id
-        JOIN users u ON sm.user_id = u.id
-        ORDER BY sm.created_at DESC
-    ''')
+    if workshop_id:
+        rows = query('''
+            SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
+                   u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
+                   sm.n_facture, sm.type_achat, sm.chantier_exp_recep,
+                   sm.nom_donneur_ordre, sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
+            FROM stock_movements sm
+            JOIN products p ON sm.product_id = p.id
+            JOIN users u ON sm.user_id = u.id
+            WHERE sm.workshop_id = ?
+            ORDER BY sm.created_at DESC
+        ''', (workshop_id,))
+    else:
+        rows = query('''
+            SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
+                   u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
+                   sm.n_facture, sm.type_achat, sm.chantier_exp_recep,
+                   sm.nom_donneur_ordre, sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
+            FROM stock_movements sm
+            JOIN products p ON sm.product_id = p.id
+            JOIN users u ON sm.user_id = u.id
+            ORDER BY sm.created_at DESC
+        ''')
     pdf = FPDF(orientation='L')
     pdf.add_page()
     _add_logo_pdf(pdf)
@@ -463,86 +480,127 @@ def _generate_movements_pdf() -> BytesIO:
     return buf
 
 
-def send_daily_report_if_not_sent(recipient_emails=None):
-    if recipient_emails is None:
-        from config import DAILY_REPORT_RECIPIENTS
-        recipient_emails = DAILY_REPORT_RECIPIENTS
-    if isinstance(recipient_emails, str):
-        recipient_emails = [recipient_emails]
+def _get_daily_recipient_groups():
+    """Group active daily-report recipients by workshop.
 
+    workshop_id NULL => 'global' group (report of ALL workshops).
+    """
+    groups = {}
+    rows = query('''
+        SELECT re.email, nr.workshop_id
+        FROM notification_recipients nr
+        JOIN recipient_emails re ON re.recipient_id = nr.id
+        WHERE nr.active = 1 AND re.active = 1
+    ''')
+    for row in rows:
+        ws_id = row['workshop_id']
+        key = ws_id if ws_id is not None else 'global'
+        groups.setdefault(key, [])
+        if row['email'] not in groups[key]:
+            groups[key].append(row['email'])
+    return groups
+
+
+def send_daily_report_if_not_sent(recipient_emails=None):
     try:
         today_str = datetime.now().strftime('%Y-%m-%d')
 
-        pending = []
-        for recipient_email in recipient_emails:
-            already = query_one('''
-                SELECT COUNT(*) as cnt FROM notification_logs
-                WHERE notification_type = 'daily_report' AND DATE(sent_at) = ?
-                AND status = 'sent' AND recipient_email = ?
-            ''', (today_str, recipient_email))
-            if already and already['cnt'] > 0:
-                logger.info(f"Daily report already sent successfully to {recipient_email} today. Skipping this recipient.")
-            else:
-                pending.append(recipient_email)
-        if not pending:
+        if recipient_emails is not None:
+            if isinstance(recipient_emails, str):
+                recipient_emails = [recipient_emails]
+            groups = {'global': recipient_emails}
+        else:
+            groups = _get_daily_recipient_groups()
+
+        workshop_names = {
+            row['id']: row['name']
+            for row in query('SELECT id, name FROM workshops')
+        }
+
+        report_groups = {}
+        for key, emails in groups.items():
+            ws_id = None if key == 'global' else key
+            ws_label = 'Toutes les ateliers' if ws_id is None else workshop_names.get(ws_id, f'Atelier {ws_id}')
+            subject = f"Rapport quotidien {ws_label} - {today_str}"
+            pending = []
+            for recipient_email in emails:
+                already = query_one('''
+                    SELECT COUNT(*) as cnt FROM notification_logs
+                    WHERE notification_type = 'daily_report' AND DATE(sent_at) = ?
+                    AND status = 'sent' AND recipient_email = ? AND subject = ?
+                ''', (today_str, recipient_email, subject))
+                if already and already['cnt'] > 0:
+                    logger.info(f"Daily report already sent to {recipient_email} today ({ws_label}). Skipping this recipient.")
+                else:
+                    pending.append(recipient_email)
+            if pending:
+                report_groups[key] = {'ws_id': ws_id, 'label': ws_label, 'subject': subject, 'pending': pending}
+
+        if not report_groups:
             logger.info("Daily report already sent today to all recipients. Skipping.")
             return False
 
-        logger.info("Generating daily report...")
-        products_output = _generate_products_report()
-        products_pdf_output = _generate_products_pdf()
-        movements_output = _generate_movements_report()
-        movements_pdf_output = _generate_movements_pdf()
+        logger.info(f"Generating daily reports for {len(report_groups)} group(s)...")
+        for info in report_groups.values():
+            ws_id = info['ws_id']
+            label = info['label']
+            subject = info['subject']
 
-        subject = f"Rapport quotidien - {today_str}"
-        body = f"Bonjour,\nVeuillez trouver ci-joint les rapports quotidiens pour la date du {today_str}.\nCordialement,\nLe Système de Gestion de Stock"
+            products_output = _generate_products_report(ws_id)
+            products_pdf_output = _generate_products_pdf(ws_id)
+            movements_output = _generate_movements_report(ws_id)
+            movements_pdf_output = _generate_movements_pdf(ws_id)
 
-        for recipient_email in pending:
-            try:
-                msg = MIMEMultipart()
-                msg['From'] = EMAIL_ADDRESS
-                msg['To'] = recipient_email
-                msg['Subject'] = subject
-                msg.attach(MIMEText(body, 'plain', 'utf-8'))
+            body = (f"Bonjour,\nVeuillez trouver ci-joint les rapports quotidiens pour la date "
+                    f"du {today_str} ({label}).\nCordialement,\nLe Système de Gestion de Stock")
+            slug = re.sub(r'[^\w\-]+', '_', label, flags=re.UNICODE).strip('_') or 'global'
 
-                part_products = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                part_products.set_payload(products_output.getvalue())
-                encoders.encode_base64(part_products)
-                part_products.add_header('Content-Disposition', 'attachment', filename=f"rapport_produits_{today_str}.xlsx")
-                msg.attach(part_products)
-
-                part_movements = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                part_movements.set_payload(movements_output.getvalue())
-                encoders.encode_base64(part_movements)
-                part_movements.add_header('Content-Disposition', 'attachment', filename=f"rapport_mouvements_{today_str}.xlsx")
-                msg.attach(part_movements)
-
-                part_products_pdf = MIMEBase('application', 'pdf')
-                part_products_pdf.set_payload(products_pdf_output.getvalue())
-                encoders.encode_base64(part_products_pdf)
-                part_products_pdf.add_header('Content-Disposition', 'attachment', filename=f"rapport_produits_{today_str}.pdf")
-                msg.attach(part_products_pdf)
-
-                part_movements_pdf = MIMEBase('application', 'pdf')
-                part_movements_pdf.set_payload(movements_pdf_output.getvalue())
-                encoders.encode_base64(part_movements_pdf)
-                part_movements_pdf.add_header('Content-Disposition', 'attachment', filename=f"rapport_mouvements_{today_str}.pdf")
-                msg.attach(part_movements_pdf)
-
-                server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-                server.starttls()
-                server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-                server.sendmail(EMAIL_ADDRESS, recipient_email, msg.as_string())
-                server.quit()
-
-                log_notification(recipient_email, 'daily_report', subject, "Rapport quotidien envoyé avec succès.")
-                logger.info(f"Daily report sent to {recipient_email}")
-            except Exception as e:
-                logger.error(f"Failed to send daily report to {recipient_email}: {e}")
+            for recipient_email in info['pending']:
                 try:
-                    log_notification(recipient_email, 'daily_report', f"Échec d'envoi - {today_str}", str(e), status='failed')
-                except Exception as log_e:
-                    logger.error(f"Logging error: {log_e}")
+                    msg = MIMEMultipart()
+                    msg['From'] = EMAIL_ADDRESS
+                    msg['To'] = recipient_email
+                    msg['Subject'] = subject
+                    msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+                    part_products = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    part_products.set_payload(products_output.getvalue())
+                    encoders.encode_base64(part_products)
+                    part_products.add_header('Content-Disposition', 'attachment', filename=f"rapport_produits_{slug}_{today_str}.xlsx")
+                    msg.attach(part_products)
+
+                    part_movements = MIMEBase('application', 'vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    part_movements.set_payload(movements_output.getvalue())
+                    encoders.encode_base64(part_movements)
+                    part_movements.add_header('Content-Disposition', 'attachment', filename=f"rapport_mouvements_{slug}_{today_str}.xlsx")
+                    msg.attach(part_movements)
+
+                    part_products_pdf = MIMEBase('application', 'pdf')
+                    part_products_pdf.set_payload(products_pdf_output.getvalue())
+                    encoders.encode_base64(part_products_pdf)
+                    part_products_pdf.add_header('Content-Disposition', 'attachment', filename=f"rapport_produits_{slug}_{today_str}.pdf")
+                    msg.attach(part_products_pdf)
+
+                    part_movements_pdf = MIMEBase('application', 'pdf')
+                    part_movements_pdf.set_payload(movements_pdf_output.getvalue())
+                    encoders.encode_base64(part_movements_pdf)
+                    part_movements_pdf.add_header('Content-Disposition', 'attachment', filename=f"rapport_mouvements_{slug}_{today_str}.pdf")
+                    msg.attach(part_movements_pdf)
+
+                    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+                    server.starttls()
+                    server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+                    server.sendmail(EMAIL_ADDRESS, recipient_email, msg.as_string())
+                    server.quit()
+
+                    log_notification(recipient_email, 'daily_report', subject, "Rapport quotidien envoyé avec succès.")
+                    logger.info(f"Daily report sent to {recipient_email} ({label})")
+                except Exception as e:
+                    logger.error(f"Failed to send daily report to {recipient_email} ({label}): {e}")
+                    try:
+                        log_notification(recipient_email, 'daily_report', f"Échec d'envoi - {label}", str(e), status='failed')
+                    except Exception as log_e:
+                        logger.error(f"Logging error: {log_e}")
 
         return True
     except Exception as e:
@@ -618,20 +676,35 @@ def _fallback_html(notification_type: str, product_info: dict, user: str) -> str
     return f"""<html><body style="font-family: Arial, sans-serif;"><div class="header" style="text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:2px solid #dc3545;"><h2 style="color:#dc3545;">Produit supprimé du stock</h2></div><p><strong>Nom du produit:</strong> {product_info['name']}</p><p><strong>Code produit:</strong> {product_info['code']}</p><p><strong>Supprimé par:</strong> {user}</p><p><strong>Date de suppression:</strong> {now}</p><p>Ceci est une notification automatique du système de gestion de stock.</p></body></html>"""
 
 
-def _generate_products_report() -> BytesIO:
-    rows = query('''
-        SELECT p.id, p.code, p.name, p.category, p.unit, p.quantity,
-               p.brand, p.condition_status, p.chanter, p.storage_zone,
-               p.notes, p.supplier_name, p.bc_number, p.bl_number,
-               p.n_facture, p.type_achat, p.expiration_date,
-               p.min_quantity, w.name as workshop_name, p.created_at, p.updated_at,
-               p.deleted_at, p.image_path,
-               u.username as created_by_name
-        FROM products p
-        LEFT JOIN workshops w ON p.workshop_id = w.id
-        LEFT JOIN users u ON p.created_by = u.id
-        WHERE p.deleted_at IS NULL ORDER BY p.name
-    ''')
+def _generate_products_report(workshop_id=None) -> BytesIO:
+    if workshop_id:
+        rows = query('''
+            SELECT p.id, p.code, p.name, p.category, p.unit, p.quantity,
+                   p.brand, p.condition_status, p.chanter, p.storage_zone,
+                   p.notes, p.supplier_name, p.bc_number, p.bl_number,
+                   p.n_facture, p.type_achat, p.expiration_date,
+                   p.min_quantity, w.name as workshop_name, p.created_at, p.updated_at,
+                   p.deleted_at, p.image_path,
+                   u.username as created_by_name
+            FROM products p
+            LEFT JOIN workshops w ON p.workshop_id = w.id
+            LEFT JOIN users u ON p.created_by = u.id
+            WHERE p.deleted_at IS NULL AND p.workshop_id = ? ORDER BY p.name
+        ''', (workshop_id,))
+    else:
+        rows = query('''
+            SELECT p.id, p.code, p.name, p.category, p.unit, p.quantity,
+                   p.brand, p.condition_status, p.chanter, p.storage_zone,
+                   p.notes, p.supplier_name, p.bc_number, p.bl_number,
+                   p.n_facture, p.type_achat, p.expiration_date,
+                   p.min_quantity, w.name as workshop_name, p.created_at, p.updated_at,
+                   p.deleted_at, p.image_path,
+                   u.username as created_by_name
+            FROM products p
+            LEFT JOIN workshops w ON p.workshop_id = w.id
+            LEFT JOIN users u ON p.created_by = u.id
+            WHERE p.deleted_at IS NULL ORDER BY p.name
+        ''')
     headers = [
         'ID', 'Code Produit', 'Nom du Produit', 'Catégorie', 'Unité', 'Quantité',
         'Marque', 'État', 'Chantier', 'Zone de Stockage',
@@ -657,17 +730,30 @@ def _generate_products_report() -> BytesIO:
     return output
 
 
-def _generate_movements_report() -> BytesIO:
-    rows = query('''
-        SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
-               sm.notes, u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
-               sm.n_facture, sm.type_achat, sm.chantier_exp_recep, sm.nom_donneur_ordre,
-               sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
-        FROM stock_movements sm
-        JOIN products p ON sm.product_id = p.id
-        JOIN users u ON sm.user_id = u.id
-        ORDER BY sm.created_at DESC
-    ''')
+def _generate_movements_report(workshop_id=None) -> BytesIO:
+    if workshop_id:
+        rows = query('''
+            SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
+                   sm.notes, u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
+                   sm.n_facture, sm.type_achat, sm.chantier_exp_recep, sm.nom_donneur_ordre,
+                   sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
+            FROM stock_movements sm
+            JOIN products p ON sm.product_id = p.id
+            JOIN users u ON sm.user_id = u.id
+            WHERE sm.workshop_id = ?
+            ORDER BY sm.created_at DESC
+        ''', (workshop_id,))
+    else:
+        rows = query('''
+            SELECT sm.created_at, sm.movement_type, p.code, p.name, p.category, sm.quantity,
+                   sm.notes, u.username, sm.supplier_name, sm.bc_number, sm.bl_number,
+                   sm.n_facture, sm.type_achat, sm.chantier_exp_recep, sm.nom_donneur_ordre,
+                   sm.nom_magasinier, sm.nom_chauffeur, sm.matricule
+            FROM stock_movements sm
+            JOIN products p ON sm.product_id = p.id
+            JOIN users u ON sm.user_id = u.id
+            ORDER BY sm.created_at DESC
+        ''')
     headers = [
         'Date', 'Type de Mouvement', 'Code Produit', 'Nom du Produit', 'Catégorie', 'Quantité',
         'Notes', 'Utilisateur', 'Nom Fournisseur', 'Numéro BC', 'Numéro BL',

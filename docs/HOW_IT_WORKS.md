@@ -124,6 +124,7 @@ cursor.execute('SELECT ... FROM products WHERE ...' + ws_clause, ws_params)
 
 - `scheduler.py` يشغّل فحص المنتجات القاربة على الانتهاء وإرسال التقرير اليومي.
 - `/cron/daily-report?token=<CRON_SECRET>` نقطة زمنية خارجية (مثل cron-job.org) تُرسل التقرير اليومي مرة واحدة في اليوم — `send_daily_report_if_not_sent` يمنع الإرسال المزدوج.
+- 📬 **التقرير اليومي مُقسّم حسب الورشة (2026-09-21)**: المستلمون يُقرأون من `notification_recipients` + `recipient_emails`/`email_management`، كل مجموعة مرتبطة بورشة (`workshop_id`) تتوصل فقط بتقرير ورشتها؛ ومن اختار « Tous les ateliers » يتوصل بالتقرير الشامل. لا تُستخدم قائمة `.env` `DAILY_REPORT_RECIPIENTS` بعد الآن.
 
 ---
 
