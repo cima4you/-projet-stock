@@ -69,8 +69,8 @@ cd ~/Engor/mysite && python3 -c "import sqlite3;c=sqlite3.connect('stock.db');pr
 # Comptage produits / mouvements (vérification d'intégrité)
 python3 -c "import sqlite3;c=sqlite3.connect('stock.db');print('products:',c.execute('SELECT COUNT(*) FROM products').fetchone()[0]);print('movements:',c.execute('SELECT COUNT(*) FROM stock_movements').fetchone()[0])"
 
-# Liste des destinataires lus par config
-python3 -c "from config import DAILY_REPORT_RECIPIENTS; print(DAILY_REPORT_RECIPIENTS)"
+# Destinataires du rapport quotidien (depuis la base, par atelier)
+python3 -c "import sqlite3;c=sqlite3.connect('stock.db');print(c.execute('SELECT nr.name,nr.workshop_id,re.email,re.daily_report FROM notification_recipients nr JOIN recipient_emails re ON re.recipient_id=nr.id WHERE re.active=1').fetchall())"
 
 # ⚠️ TEST SEULEMENT — réinitialiser l'envoi du jour (provoque un renvoi immédiat)
 python3 -c "import sqlite3;c=sqlite3.connect('stock.db');c.execute(\"DELETE FROM notification_logs WHERE notification_type='daily_report' AND DATE(sent_at)=date('now')\");c.commit();print('cleared')"

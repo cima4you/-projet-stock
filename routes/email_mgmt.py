@@ -93,6 +93,37 @@ def register_email_routes(app):
             flash(f"Erreur: {str(e)}", 'error')
         return redirect(url_for('daily_report_config'))
 
+    @app.route('/daily_report_config/add', methods=['POST'])
+    @admin_required
+    def daily_report_config_add():
+        try:
+            name = request.form['name'].strip()
+            email = request.form['email'].strip()
+            workshop_id = request.form.get('workshop_id', '') or None
+            if workshop_id:
+                workshop_id = int(workshop_id)
+            if not name or not email:
+                flash("Veuillez saisir un nom et une adresse email.", 'error')
+                return redirect(url_for('daily_report_config'))
+            daily = 1 if 'daily_report' in request.form else 0
+            recipient_id = execute('''
+                INSERT INTO notification_recipients (name, email, workshop_id)
+                VALUES (?, ?, ?)
+            ''', (name, '', workshop_id))
+            execute('''
+                INSERT INTO recipient_emails
+                (recipient_id, email, active, daily_report,
+                 notify_achat_par_bc, notify_achat_par_caisse,
+                 notify_achat_a_regulariser, notify_transfert,
+                 notify_consumption, notify_product_deletion, notify_product_expiration)
+                VALUES (?, ?, 1, ?, 0, 0, 0, 0, 0, 0, 0)
+            ''', (recipient_id, email, daily))
+            flash("Destinataire du rapport quotidien ajouté.", 'success')
+        except Exception as e:
+            logger.error(f"Error adding daily report recipient: {e}")
+            flash(f"Erreur: {str(e)}", 'error')
+        return redirect(url_for('daily_report_config'))
+
     @app.route('/test_email')
     @admin_required
     def test_email():

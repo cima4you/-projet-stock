@@ -31,5 +31,3 @@ services:
         value: ""
       - key: DEFAULT_ADMIN_EMAIL
         value: bazigherachid@gmail.com
-      - key: DAILY_REPORT_RECIPIENTS
-        value: bazigherachid@gmail.com

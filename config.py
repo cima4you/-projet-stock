@@ -79,11 +79,3 @@ if not CRON_SECRET:
 # Security headers / cookies
 ENABLE_SECURE_COOKIE = os.environ.get('SECURE_COOKIE', '') == '1'
 FLASK_DEBUG = os.environ.get('FLASK_DEBUG', '') == '1'
-
-# Daily report recipients
-DAILY_REPORT_RECIPIENTS = [
-    email.strip() for email in os.environ.get(
-        'DAILY_REPORT_RECIPIENTS',
-        'bazigherachid@gmail.com'
-    ).split(',') if email.strip()
-]
