@@ -490,7 +490,7 @@ def _get_daily_recipient_groups():
         SELECT re.email, nr.workshop_id
         FROM notification_recipients nr
         JOIN recipient_emails re ON re.recipient_id = nr.id
-        WHERE nr.active = 1 AND re.active = 1
+        WHERE nr.active = 1 AND re.active = 1 AND re.daily_report = 1
     ''')
     for row in rows:
         ws_id = row['workshop_id']

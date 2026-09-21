@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Rapport quotidien - destinataires{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3">
+                <i class="fas fa-envelope-open-text me-2"></i>
+                Rapport quotidien - Destinataires
+            </h1>
+            <small class="text-muted">Cocher les destinataires qui doivent recevoir le rapport quotidien de chaque atelier. D\u00e9coch\u00e9 = ne re\u00e7oit plus le rapport.</small>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('daily_report_config_update') }}">
+        <div class="row g-4">
+            {% for ws in workshops %}
+            <div class="col-12">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-industry me-2"></i>
+                            {{ ws.name }}{% if ws.city %} - {{ ws.city }}{% endif %}
+                            <span class="badge bg-secondary ms-2">{{ ws.emails|length }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if ws.emails %}
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;"></th>
+                                    <th>Destinataire</th>
+                                    <th>Adresse email</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for email in ws.emails %}
+                                <tr>
+                                    <td>
+                                        <input class="form-check-input" type="checkbox" name="daily_report[]" value="{{ email[0] }}" {% if email[2] %}checked{% endif %}>
+                                        <input type="hidden" name="email_id[]" value="{{ email[0] }}">
+                                    </td>
+                                    <td>{{ email[3] }}</td>
+                                    <td>{{ email[1] }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-muted mb-0">Aucun destinataire enregistr\u00e9 pour cet atelier. Ajoutez-les dans <a href="{{ url_for('email_management') }}">Gestion des notifications</a>.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if global_emails %}
+            <div class="col-12">
+                <div class="card h-100 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-globe me-2"></i>
+                            Tous les ateliers (rapport global)
+                            <span class="badge bg-light text-dark ms-2">{{ global_emails|length }}</span>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;"></th>
+                                    <th>Destinataire</th>
+                                    <th>Adresse email</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for email in global_emails %}
+                                <tr>
+                                    <td>
+                                        <input class="form-check-input" type="checkbox" name="daily_report[]" value="{{ email[0] }}" {% if email[2] %}checked{% endif %}>
+                                        <input type="hidden" name="email_id[]" value="{{ email[0] }}">
+                                    </td>
+                                    <td>{{ email[3] }}</td>
+                                    <td>{{ email[1] }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Enregistrer
+            </button>
+            <a href="{{ url_for('email_management') }}" class="btn btn-secondary">
+                <i class="fas fa-envelope me-2"></i>Gestion des notifications
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

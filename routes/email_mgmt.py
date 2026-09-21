@@ -48,6 +48,51 @@ def register_email_routes(app):
                              translations=TRANSLATIONS[session.get('lang', 'fr')],
                              lang=session.get('lang', 'fr'))
 
+    @app.route('/daily_report_config')
+    @admin_required
+    def daily_report_config():
+        workshops = query('SELECT id, name, city FROM workshops WHERE active = 1 ORDER BY name')
+        page_data = []
+        for ws in workshops:
+            emails = query('''
+                SELECT re.id, re.email, re.daily_report, nr.name
+                FROM recipient_emails re
+                JOIN notification_recipients nr ON re.recipient_id = nr.id
+                WHERE nr.active = 1 AND re.active = 1 AND nr.workshop_id = ?
+                ORDER BY nr.name, re.email
+            ''', (ws['id'],))
+            page_data.append({'id': ws['id'], 'name': ws['name'], 'city': ws['city'], 'emails': emails})
+        global_emails = query('''
+            SELECT re.id, re.email, re.daily_report, nr.name
+            FROM recipient_emails re
+            JOIN notification_recipients nr ON re.recipient_id = nr.id
+            WHERE nr.active = 1 AND re.active = 1 AND (nr.workshop_id IS NULL OR nr.workshop_id = '')
+            ORDER BY nr.name, re.email
+        ''')
+        return render_template('daily_report_config.html',
+                               workshops=page_data,
+                               global_emails=global_emails,
+                               translations=TRANSLATIONS[session.get('lang', 'fr')],
+                               lang=session.get('lang', 'fr'))
+
+    @app.route('/daily_report_config/update', methods=['POST'])
+    @admin_required
+    def daily_report_config_update():
+        try:
+            email_ids = request.form.getlist('email_id[]')
+            selected = {int(x) for x in request.form.getlist('daily_report[]') if x.isdigit()}
+            if not email_ids:
+                flash("Aucun destinataire à mettre à jour.", 'error')
+                return redirect(url_for('daily_report_config'))
+            for eid in email_ids:
+                execute('UPDATE recipient_emails SET daily_report = ? WHERE id = ?',
+                        (1 if int(eid) in selected else 0, int(eid)))
+            flash("Préférences du rapport quotidien mises à jour.", 'success')
+        except Exception as e:
+            logger.error(f"Error updating daily report recipients: {e}")
+            flash(f"Erreur: {str(e)}", 'error')
+        return redirect(url_for('daily_report_config'))
+
     @app.route('/test_email')
     @admin_required
     def test_email():
