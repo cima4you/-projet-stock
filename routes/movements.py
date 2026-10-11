@@ -317,12 +317,6 @@ def register_movement_routes(app):
                                 return redirect(url_for('movements'))
                             old_new_stock = old_prod['quantity'] - sign * old['quantity']
                             new_new_stock = new_prod['quantity'] + sign * new_quantity
-                            if old_new_stock < 0:
-                                flash("Modification impossible : le stock du produit d'origine deviendrait négatif", 'error')
-                                return redirect(url_for('movements'))
-                            if new_new_stock < 0:
-                                flash("Modification impossible : le stock du nouveau produit deviendrait négatif", 'error')
-                                return redirect(url_for('movements'))
                             cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
                                           (old_new_stock, old['product_id']))
                             cursor.execute('UPDATE products SET quantity=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
