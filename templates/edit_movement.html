@@ -34,8 +34,17 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">{{ translations.select_product }}</label>
+                                    <label for="product_id" class="form-label">{{ translations.select_product }}</label>
+                                    {% if session.role in ['admin', 'principal_admin'] %}
+                                    <select class="form-select" id="product_id" name="product_id">
+                                        {% for p in products %}
+                                        <option value="{{ p['id'] }}" {% if p['id'] == movement['product_id'] %}selected{% endif %}>{{ p['code'] }} - {{ p['name'] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Modifiez le produit : le stock de l'ancien et du nouveau produit sera ajusté automatiquement.</div>
+                                    {% else %}
                                     <input type="text" class="form-control" value="{{ current_product_code }} - {{ current_product_name }}" disabled>
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="col-md-6">
